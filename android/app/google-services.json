@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "45495692118",
+    "project_id": "sellio-87cc3",
+    "storage_bucket": "sellio-87cc3.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45495692118:android:00b5af8c4064349db004f7",
+        "android_client_info": {
+          "package_name": "com.example.pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfADxayHLPG_WaJ3vyNYnUrAFF6xL1yX8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
