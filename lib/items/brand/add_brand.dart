@@ -26,15 +26,16 @@ class _Add_brandState extends State<Add_brand> {
   }
 
   add() async {
-    await FirebaseFirestore.instance
-        .collection('brand')
-        .doc()
-        .set({
+    DocumentReference docRef = FirebaseFirestore.instance.collection('brand').doc();
+    var brandId = docRef.id;
+
+    await docRef.set({
+      'id': brandId,
       'title': title,
-      'item': "",
-    })
-        .then((value) => print('User Added'))
-        .catchError((error) => print('Failed to add user: $error'));
+      'item': "0",
+    }).then((value) => print('Brand Added'))
+        .catchError((error) => print('Failed to add brand: $error'));
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(

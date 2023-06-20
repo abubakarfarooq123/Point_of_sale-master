@@ -227,7 +227,7 @@ class _TaxState extends State<Tax> {
                             style: GoogleFonts.poppins(),
                           )),
                           DataCell(Text(
-                            type1,
+                            type1 ?? '',
                             style: GoogleFonts.poppins(),
                           )),
                         ],

@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/home/drawer.dart';
 import 'package:pos/user/edit_profile.dart';
+import 'package:pos/warehouse/warehouse.dart';
 
 import '../splashScreens/loginout.dart';
 enum MenuItem{
@@ -15,6 +17,56 @@ class Add_Warehouse extends StatefulWidget {
   State<Add_Warehouse> createState() => _Add_WarehouseState();
 }
 class _Add_WarehouseState extends State<Add_Warehouse> {
+  final _formKey = GlobalKey<FormState>();
+
+  var name='';
+  var address ='';
+  var phone ='';
+  var city = '';
+  var state = '';
+  var zipcode = '';
+  var country = '';
+  final nameController = TextEditingController();
+  final countryController = TextEditingController();
+  final addressController = TextEditingController();
+  final phoneController = TextEditingController();
+  final cityController = TextEditingController();
+  final stateController = TextEditingController();
+  final zipcodeController = TextEditingController();
+  void dispose() {
+    nameController.dispose();
+    countryController.dispose();
+    addressController.dispose();
+    phoneController.dispose();
+    cityController.dispose();
+    stateController.dispose();
+    zipcodeController.dispose();
+    super.dispose();
+  }
+
+  add() async {
+    await FirebaseFirestore.instance
+        .collection('warehouse')
+        .doc()
+        .set({
+      'item': name,
+      'phone': phone,
+      'addres':address,
+      'city': city,
+      'state':state,
+      'zipcode': zipcode,
+      'country': country,
+      'cost': '',
+    })
+        .then((value) => print('User Added'))
+        .catchError((error) => print('Failed to add user: $error'));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Warehouse(),
+      ),
+    );
+  }
   List<String> gender =['Male','Female','N/A'];
   String selected = '';
   var setvalue;
@@ -91,6 +143,7 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
         child: Column(
           children: [
             new Form(
+              key: _formKey,
               child: Column(
                 children: <Widget>[
                   Padding(
@@ -107,12 +160,20 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
                           color: Colors.blue,
                         ),
                       ),
+                        controller: nameController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please Enter Title';
+                          }
+                          return null;
+                        }
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 18,right: 18,bottom: 18,top: 18),
                     child: TextFormField(
                       keyboardType: TextInputType.number,
+                      controller: phoneController,
                       decoration: InputDecoration(
                         hintText: 'Phone',
                         enabledBorder: OutlineInputBorder(
@@ -133,6 +194,7 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
                   Padding(
                     padding: const EdgeInsets.all(18.0),
                     child: TextFormField(
+                      controller: addressController,
                       decoration: InputDecoration(
                         hintText: 'Address',
                         enabledBorder: OutlineInputBorder(
@@ -153,6 +215,7 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
                   Padding(
                     padding: const EdgeInsets.all(18.0),
                     child: TextFormField(
+                      controller: cityController,
                       decoration: InputDecoration(
                         hintText: 'City',
                         enabledBorder: OutlineInputBorder(
@@ -173,6 +236,7 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
                   Padding(
                     padding: const EdgeInsets.all(18.0),
                     child: TextFormField(
+                      controller: stateController,
                       decoration: InputDecoration(
                         hintText: 'State',
                         enabledBorder: OutlineInputBorder(
@@ -193,6 +257,7 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
                   Padding(
                     padding: const EdgeInsets.all(18.0),
                     child: TextFormField(
+                      controller: zipcodeController,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         hintText: 'ZipCode',
@@ -214,6 +279,7 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
                   Padding(
                     padding: const EdgeInsets.all(18.0),
                     child: TextFormField(
+                      controller: countryController,
                       decoration: InputDecoration(
                         hintText: 'Country',
                         enabledBorder: OutlineInputBorder(
@@ -242,7 +308,20 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
 
                     ),
                     child: InkWell(
-                      onTap: () {},
+                      onTap: () {
+                        if (_formKey.currentState!.validate()) {
+                          setState(() {
+                            name = nameController.text;
+                            country = countryController.text;
+                            phone = phoneController.text;
+                            address = addressController.text;
+                            city = cityController.text;
+                            state = stateController.text;
+                            zipcode = zipcodeController.text;
+                          });
+                          add();
+                        }
+                      },
                       child: Center(
                         child: Text(
                           'Add',

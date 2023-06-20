@@ -179,7 +179,7 @@ class _Category_nameState extends State<Category_name> {
               height: 30,
             ),
             DataTable(
-                columnSpacing: 160,
+                columnSpacing: 120,
                 headingRowColor: MaterialStateColor.resolveWith((states) {
                   return Colors.blue;
                 },),
@@ -211,10 +211,7 @@ class _Category_nameState extends State<Category_name> {
                 String item = employeeData['item'];
                 return DataRow(
                   cells: [
-                    DataCell(Text(title,style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold
-                    ),)),
+                    DataCell(Text(title)),
                     DataCell(Text(item)),
                   ],
                 );

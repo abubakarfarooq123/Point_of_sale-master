@@ -30,13 +30,14 @@ class _Add_UnitState extends State<Add_Unit> {
   }
 
   add() async {
-    await FirebaseFirestore.instance
-        .collection('Unit')
-        .doc()
-        .set({
+    DocumentReference docRef = FirebaseFirestore.instance.collection('Unit').doc();
+    var UnitId = docRef.id;
+
+    await docRef.set({
+      'id': UnitId,
       'name': name,
       'lable': short_name,
-      'items':"",
+      'items':"0",
     })
         .then((value) => print('User Added'))
         .catchError((error) => print('Failed to add user: $error'));

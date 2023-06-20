@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/home/drawer.dart';
-import 'package:pos/items/create_category.dart';
 import 'package:pos/user/edit_profile.dart';
 
 import '../../splashScreens/loginout.dart';
@@ -181,7 +180,7 @@ class _BrandState extends State<Brand> {
                   height: 30,
                 ),
                 DataTable(
-                  columnSpacing: MediaQuery.of(context).size.width/3.2,
+                  columnSpacing: MediaQuery.of(context).size.width/3.6,
                   headingRowColor: MaterialStateColor.resolveWith((states) {
                     return Colors.blue;
                   },),

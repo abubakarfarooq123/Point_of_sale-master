@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pos/home/home_screen.dart';
 import 'package:pos/user/forgot.dart';
 import 'package:pos/user/signup.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';

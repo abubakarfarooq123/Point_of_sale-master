@@ -28,12 +28,13 @@ class _Create_categoryState extends State<Create_category> {
   }
 
   add() async {
-    await FirebaseFirestore.instance
-        .collection('category')
-        .doc()
-        .set({
+    DocumentReference docRef = FirebaseFirestore.instance.collection('category').doc();
+    var categoryId = docRef.id;
+
+    await docRef.set({
+      'id': categoryId,
       'title': title,
-      'item': "",
+      'item': "0",
     })
         .then((value) => print('User Added'))
         .catchError((error) => print('Failed to add user: $error'));

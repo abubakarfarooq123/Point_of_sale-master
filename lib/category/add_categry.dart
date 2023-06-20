@@ -28,23 +28,25 @@ class _Add_categoryState extends State<Add_category> {
     super.dispose();
   }
 
-  // add() async {
-  //   await FirebaseFirestore.instance
-  //       .collection('category')
-  //       .doc()
-  //       .set({
-  //     'title': title,
-  //     'item': "",
-  //   })
-  //       .then((value) => print('User Added'))
-  //       .catchError((error) => print('Failed to add user: $error'));
-  //   Navigator.pushReplacement(
-  //     context,
-  //     MaterialPageRoute(
-  //       builder: (context) => Category_aa(),
-  //     ),
-  //   );
-  // }
+  add() async {
+    DocumentReference docRef = FirebaseFirestore.instance.collection('expenses_category').doc();
+    var expenseId = docRef.id;
+
+    await docRef.set({
+      'id': expenseId,
+      'title': title,
+      'item': '0',
+      'amount': '0',
+    })
+        .then((value) => print('User Added'))
+        .catchError((error) => print('Failed to add user: $error'));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Category_aa(),
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,12 +175,12 @@ class _Add_categoryState extends State<Add_category> {
                       ),
                       child: InkWell(
                         onTap: () {
-                          // if (_formKey.currentState!.validate()) {
-                          //   setState(() {
-                          //    title = titleController.text;
-                          //   });
-                          //   add();
-                          // }
+                          if (_formKey.currentState!.validate()) {
+                            setState(() {
+                             title = titleController.text;
+                            });
+                            add();
+                          }
                         },
                         child: Center(
                           child: Text(

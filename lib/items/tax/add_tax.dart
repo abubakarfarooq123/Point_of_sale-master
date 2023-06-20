@@ -19,27 +19,35 @@ class _Add_TaxState extends State<Add_Tax> {
   final _formKey = GlobalKey<FormState>();
 
   var lable = "";
-  var amount1 = "";
   final lableController = TextEditingController();
-  final amount1Controller = TextEditingController();
+  final amountTextController = TextEditingController();
+  String amountText = '';
+  String selectedType = 'Amount';
 
-  void dispose() {
-    lableController.dispose();
-    amount1Controller.dispose();
-    super.dispose();
-  }
+  void addButtonPressed() async{
+    double finalAmount = double.parse(amountText);
 
-  add() async {
-    await FirebaseFirestore.instance
-        .collection('tax')
-        .doc()
-        .set({
-      'lable': lable,
-      'amount': amount1,
-      'type': setvalue
-    })
-        .then((value) => print('User Added'))
-        .catchError((error) => print('Failed to add user: $error'));
+    if (selectedType == 'Percentage') {
+      finalAmount = finalAmount / 100; // Treat as a percentage
+    }
+
+    // Perform calculations or further processing with the final amount
+    // (e.g., store, display, etc.)
+
+    // Reset the fields or perform any other necessary actions
+    DocumentReference docRef = FirebaseFirestore.instance.collection('tax').doc();
+    var UnitId = docRef.id;
+
+    await docRef.set({
+      'id': UnitId,
+      'amount': finalAmount.toString(),
+      'type': selectedType,
+      'lable': lable
+    });
+    setState(() {
+      amountText = '';
+      selectedType = 'Amount';
+    });
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -47,6 +55,13 @@ class _Add_TaxState extends State<Add_Tax> {
       ),
     );
   }
+
+  void dispose() {
+    lableController.dispose();
+    amountTextController.dispose();
+    super.dispose();
+  }
+
   List<String> amount =['Amount','Percentage'];
   String selected = '';
   var setvalue;
@@ -182,7 +197,7 @@ class _Add_TaxState extends State<Add_Tax> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        controller: amount1Controller,
+                        controller: amountTextController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please Enter Amount';
@@ -200,56 +215,40 @@ class _Add_TaxState extends State<Add_Tax> {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 14,right: 14),
-                    child: Column(
-                      children: <Widget>[
-
-                        Container(
-                          width: 329,
-                          height: 60,
-                          padding: EdgeInsets.only(left: 16,right: 16),
-                          decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey,width: 1),
-                              borderRadius: BorderRadius.circular(15)
+                    child: Container(
+                      height: 60,
+                      width: 340,
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade400,)
+                      ),
+                      child: DropdownButton<String>(
+                        underline: SizedBox(),
+                        isExpanded: true,
+                        icon: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Icon(
+                            Icons.arrow_drop_down,
+                            size: 0,
                           ),
-                          child: DropdownButton(
-                            hint: Padding(
-                              padding: const EdgeInsets.only(top: 10),
-                              child: Text(
-                                'Amount',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                ),
-                              ),
+                        ),
+                        value: selectedType,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedType = newValue!;
+                          });
+                        },
+                        items: <String>['Amount', 'Percentage']
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 10,top: 5),
+                              child: Text(value),
                             ),
-                            isExpanded: true,
-                            underline: SizedBox(),
-                            iconSize: 40.0,
-                            value: setvalue,
-                            onChanged: (newValue) {
-                              setState(() {
-                                setvalue = newValue;
-                              });
-                            },
-                            items: amount.map((String value) {
-                              return new DropdownMenuItem<String>(
-                                value: value,
-                                child: new Text(value),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        SizedBox(
-                          height: 10.0,
-                        ),
-                        Text(
-                          selected == 'Percentage' ? '%' : '',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20.0,
-                            color: Colors.teal[700],
-                          ),
-                        ),
-                      ],
+                          );
+                        }).toList(),
+                      ),
                     ),
                   ),
 
@@ -271,9 +270,11 @@ class _Add_TaxState extends State<Add_Tax> {
                           if (_formKey.currentState!.validate()) {
                             setState(() {
                               lable = lableController.text;
-                              amount1 = amount1Controller.text;
+                              amountText = amountTextController.text;
                             });
-                            add();
+
+                            addButtonPressed();
+
                           }
                         },
                         child: Center(

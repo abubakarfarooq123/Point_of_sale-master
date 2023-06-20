@@ -1,9 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/home/drawer.dart';
-import 'package:pos/staff/add_suppliers.dart';
 import 'package:pos/user/edit_profile.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';

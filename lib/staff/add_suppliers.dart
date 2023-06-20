@@ -65,12 +65,25 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
     print("UserEmail is :" + email);
     print('Values are ' + name + email + phone);
   }
+  void savePreviousBalance() {
+    String value = previous_balanceController.text.trim();
+    if (value.isEmpty) {
+      // Set default value of '0' if no value is entered
+      previous_balanceController.text = '0';
+    }
+    // Save the value or perform any other logic
+    print('Previous balance: ${previous_balanceController.text}');
+  }
 
   add() async {
-    await FirebaseFirestore.instance
-        .collection('supplier')
-        .doc()
-        .set({
+    DocumentReference docRef = FirebaseFirestore.instance.collection('supplier').doc();
+    var brandId = docRef.id;
+    previous_blanace = previous_balanceController.text.trim();
+    if (previous_blanace.isEmpty) {
+      previous_blanace = '0'; // Set default value of '0' if no value is entered
+    }
+    await docRef.set({
+      'id': brandId,
       'company': company,
       'name': name,
       'email': email,
@@ -81,8 +94,8 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
       'zip': zipcode,
       'country': country,
       'previous': previous_blanace,
-      'total_paid': "",
-      'purchase': "",
+      'total_paid': "0",
+      'purchase': "0",
       'comment':comment,
       'agency': agency,
     })
@@ -429,12 +442,6 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
                         ),
                       ),
                         controller: previous_balanceController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Balance';
-                          }
-                          return null;
-                        }
                     ),
                   ),
                   Padding(

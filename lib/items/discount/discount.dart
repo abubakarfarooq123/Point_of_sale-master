@@ -26,7 +26,7 @@ class _DiscountState extends State<Discount> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   Future<List<DocumentSnapshot>> fetchEmployeeData() async {
-    QuerySnapshot snapshot = await firestore.collection('discount').get();
+    QuerySnapshot snapshot = await firestore.collection('Discount').get();
     return snapshot.docs;
   }
 
@@ -224,11 +224,11 @@ class _DiscountState extends State<Discount> {
                             style: GoogleFonts.poppins(),
                           )),
                           DataCell(Text(
-                            amount2,
+                            amount2.toString(),
                             style: GoogleFonts.poppins(),
                           )),
                           DataCell(Text(
-                            type1,
+                            type1 ?? '',
                             style: GoogleFonts.poppins(),
                           )),
                         ],

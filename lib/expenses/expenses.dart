@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -10,8 +11,7 @@ import 'package:pos/user/edit_profile.dart';
 import '../splashScreens/loginout.dart';
 import '../user/login.dart';
 
-
-enum MenuItem{
+enum MenuItem {
   item1,
   item2,
 }
@@ -24,6 +24,13 @@ class Expenses extends StatefulWidget {
 }
 
 class _ExpensesState extends State<Expenses> {
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  Future<List<DocumentSnapshot>> fetchEmployeeData() async {
+    QuerySnapshot snapshot = await firestore.collection('expense').get();
+    return snapshot.docs;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,34 +47,32 @@ class _ExpensesState extends State<Expenses> {
         iconTheme: IconThemeData(color: Colors.black),
         actions: [
           PopupMenuButton<MenuItem>(
-            onSelected: (value){
-              if(value== MenuItem.item1){
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            Edit_Profile()));
+            onSelected: (value) {
+              if (value == MenuItem.item1) {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => Edit_Profile()));
               }
-              if(value== MenuItem.item2){
+              if (value == MenuItem.item2) {
                 FirebaseAuth.instance.signOut();
                 Navigator.pushReplacement(context,
                     MaterialPageRoute(builder: (context) => LoginOut()));
 
-                    (route) => false;
+                (route) => false;
               }
             },
-            itemBuilder: (context)=>[
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: MenuItem.item1,
                 child: Row(
                   children: [
                     Icon(Icons.edit),
-                    SizedBox(width: 10,),
-                    Text(
-                      "Edit Profile",style: GoogleFonts.roboto(
-                        color: Colors.black,
-                        fontSize: 16
+                    SizedBox(
+                      width: 10,
                     ),
+                    Text(
+                      "Edit Profile",
+                      style:
+                          GoogleFonts.roboto(color: Colors.black, fontSize: 16),
                     ),
                   ],
                 ),
@@ -77,12 +82,13 @@ class _ExpensesState extends State<Expenses> {
                 child: Row(
                   children: [
                     Icon(Icons.login_outlined),
-                    SizedBox(width: 10,),
-                    Text(
-                      "Logout",style: GoogleFonts.roboto(
-                        color: Colors.black,
-                        fontSize: 16
+                    SizedBox(
+                      width: 10,
                     ),
+                    Text(
+                      "Logout",
+                      style:
+                          GoogleFonts.roboto(color: Colors.black, fontSize: 16),
                     ),
                   ],
                 ),
@@ -93,165 +99,173 @@ class _ExpensesState extends State<Expenses> {
       ),
       drawer: MyDrawer(),
       body: SingleChildScrollView(
-          child: Column(
-            children: [
-              Row(
+        child: FutureBuilder<List<DocumentSnapshot>>(
+          future: fetchEmployeeData(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return CircularProgressIndicator();
+            } else if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            } else {
+              List<DocumentSnapshot> data = snapshot.data!;
+              return Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 14,top: 20,bottom: 14),
-                    child: Container(
-                      height: 50,
-                      width: 230,
-                      child: TextField(
-                        decoration: InputDecoration(
-                          focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(40),
-                              borderSide: BorderSide(color: Colors.black)),
-                          enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(40),
-                              borderSide: BorderSide(color: Colors.black)),
-                          prefixIcon: Icon(
-                            Icons.search_outlined,
-                            color: Colors.grey,
+                  Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            left: 14, top: 20, bottom: 14),
+                        child: Container(
+                          height: 50,
+                          width: 230,
+                          child: TextField(
+                            decoration: InputDecoration(
+                              focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(40),
+                                  borderSide: BorderSide(color: Colors.black)),
+                              enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(40),
+                                  borderSide: BorderSide(color: Colors.black)),
+                              prefixIcon: Icon(
+                                Icons.search_outlined,
+                                color: Colors.grey,
+                              ),
+                              hintText: "Search...",
+                              hintStyle: TextStyle(color: Colors.grey),
+                            ),
                           ),
-                          hintText: "Search...",
-                          hintStyle: TextStyle(color: Colors.grey),
                         ),
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 10,),
-                    child: InkWell(
-                      child: Container(
-                        height: 40,
-                        width: 40,
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            color: Colors.blue
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 10,
                         ),
-                        child: Icon(FontAwesomeIcons.filePdf,color: Colors.white,size: 18,),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 10,),
-                    child: InkWell(
-                      child: Container(
-                        height: 40,
-                        width: 40,
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            color: Colors.blue
-                        ),
-                        child: Icon(FontAwesomeIcons.fileCsv,color: Colors.white,size: 18,),
-                      ),
-                    ),
-                  ),
-
-                ],
-              ),
-              SizedBox(
-                height: 20,
-              ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                    columnSpacing: 21,
-                    headingRowColor: MaterialStateColor.resolveWith((states) {return Colors.blue;},),
-                    // border: TableBorder(
-                    //   borderRadius: BorderRadius.circular(20),
-                    // ),
-                    dividerThickness: 3,
-                    showBottomBorder: true,
-                    columns: [
-                      DataColumn(
-                        label: Text('Date',style: GoogleFonts.roboto(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        child: InkWell(
+                          child: Container(
+                            height: 40,
+                            width: 40,
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30),
+                                color: Colors.blue),
+                            child: Icon(
+                              FontAwesomeIcons.filePdf,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
                         ),
                       ),
-                      DataColumn(
-                        label: Text('Amount',style: GoogleFonts.roboto(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 10,
                         ),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text('Category',style: GoogleFonts.roboto(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text('Notes',style: GoogleFonts.roboto(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        child: InkWell(
+                          child: Container(
+                            height: 40,
+                            width: 40,
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30),
+                                color: Colors.blue),
+                            child: Icon(
+                              FontAwesomeIcons.fileCsv,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
                         ),
                       ),
-
-                      DataColumn(label: Text(""),),
                     ],
-                    rows: [
-
-                      DataRow(cells: [
-                        DataCell(Text('2023-03-10'),
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                        columnSpacing: 21,
+                        headingRowColor: MaterialStateColor.resolveWith(
+                          (states) {
+                            return Colors.blue;
+                          },
                         ),
-                        DataCell(Text('10.0'),
-                        ),
-                        DataCell(Text('Loader'),
-                        ),
-                        DataCell(Text('Loader of PUR#1'),
-                        ),
-                        DataCell( Row(
-                          children: [
-                            IconButton(onPressed: (){}, icon: Icon(Icons.edit),color: Colors.blue,),
-                            SizedBox(
-                              width: 5,
+                        // border: TableBorder(
+                        //   borderRadius: BorderRadius.circular(20),
+                        // ),
+                        dividerThickness: 3,
+                        showBottomBorder: true,
+                        columns: [
+                          DataColumn(
+                            label: Text(
+                              'Date',
+                              style: GoogleFonts.roboto(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                            IconButton(onPressed: (){}, icon: Icon(Icons.delete),color: Colors.blue,),
-                          ],
-                        ),),]
-                      ),
-                      DataRow(cells: [
-                        DataCell(Text('2023-04-30'),
-                        ),
-                        DataCell(Text('20.0'),
-                        ),
-                        DataCell(Text('Loader1'),
-                        ),
-                        DataCell(Text('Loader of PUR#2'),
-                        ),
-                        DataCell( Row(
-                          children: [
-                            IconButton(onPressed: (){}, icon: Icon(Icons.edit),color: Colors.blue,),
-                            SizedBox(
-                              width: 5,
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Amount',
+                              style: GoogleFonts.roboto(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                            IconButton(onPressed: (){}, icon: Icon(Icons.delete),color: Colors.blue,),
-                          ],
-                        ),),]
-                      ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Category',
+                              style: GoogleFonts.roboto(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Notes',
+                              style: GoogleFonts.roboto(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                          rows: data.map((document) {
+            Map<String, dynamic> employeeData =
+            document.data() as Map<String, dynamic>;
+            String date = employeeData['date'];
+            String amount = employeeData['amount'];
+            String category = employeeData['category'];
+            String note = employeeData['note'];
 
-                    ]),
-              ),
+            return DataRow(
+            cells: [
+            DataCell(Text(date)),
+            DataCell(Text(amount)),
+            DataCell(Text(category)),
+              DataCell(Text(note)),
             ],
-          )
+            );
+            }).toList(),
+                  ),
+                  ),
+                ],
+              );
+            }
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: (){
+        onPressed: () {
           Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => Add_Expenses()));
-
+              context, MaterialPageRoute(builder: (context) => Add_Expenses()));
         },
         backgroundColor: Colors.blue,
-        child: Icon(Icons.add,color: Colors.white,),
+        child: Icon(
+          Icons.add,
+          color: Colors.white,
+        ),
       ),
     );
   }
