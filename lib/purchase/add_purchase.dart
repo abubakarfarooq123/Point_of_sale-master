@@ -1,10 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/home/drawer.dart';
-import 'package:pos/home/home_screen.dart';
 import 'package:pos/purchase/purchase.dart';
 import 'package:pos/user/edit_profile.dart';
 import 'package:intl/intl.dart';
@@ -22,17 +20,21 @@ class Add_Purchase extends StatefulWidget {
 }
 
 class _Add_PurchaseState extends State<Add_Purchase> {
-  TextEditingController? _dateController;
   double? amountPaid;
+  double? taxAdd;
 
   @override
   void initState() {
     super.initState();
     assignGrandTotal();
-    calculateGrandTotal();
-    calculateGrandTotalwithTax();
-    fetchPurchaseCount();
-    _dateController = TextEditingController(text: getCurrentDate());
+    _extraamountController.addListener(() {
+      if (!_extraAmountFocusNode.hasFocus) {
+        calculatedextragrandtotal();
+      }
+    });
+    getDataFromFirebase();
+    _purchasedateController.text =
+        DateFormat('dd/MM/yyyy').format(DateTime.now());
   }
 
   Widget? tableWidget;
@@ -47,41 +49,52 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     var formatter = DateFormat('yyyy-MM-dd');
     return formatter.format(now);
   }
+
   double displaybalancedue = 0.0;
-  bool isPercentageDiscount =
-      false; // Add this line above the showMyDialog() method
+  bool isPercentageDiscount = false;
   double grandTotal = 0.0; // Add this line above the showMyDialog() method
 
-
   bool isPercentagetax = false;
+  var pickdate = "";
+  var duedate = "";
 
-
+  int currentPurchaseCount = 0;
 
   add() async {
     DocumentReference docRef =
-    FirebaseFirestore.instance.collection('Purchase').doc();
+        FirebaseFirestore.instance.collection('Purchase').doc();
     var brandId = docRef.id;
 
-    await docRef
-        .set({
+    await docRef.set({
       'id': brandId,
       'item': selectedProduct!.p_name,
-      'count':selectedItemCount,
+      'count': selectedItemCount,
       'purchase': currentPurchaseCount,
-      'pickdate':_purchasedateController.text,
-      'duedate': _due_dateController,
+      'pickdate': pickdate,
+      'duedate': duedate,
       'warehouse': selectedCategory!.c_title,
       'supplier': selectedSupplier!.s_name,
-      'quantity':_quantityController,
-      'subtotal': subtotal,
-      'grand': grandTotal,
-      'discount': selectedDiscount!.d_amount,
-      'tax': selectedTax!.t_amount,
-      'rate': _ratesController,
-    })
-        .then((value) => print('User Added'))
-        .catchError((error) => print('Failed to add user: $error'));
-
+      'subtotal': selectedProducts.length > 1 ? combosubtotal : subtotal,
+      'grand': selectedDiscount != null && selectedTax != null
+          ? grandTotal
+          : selectedDiscount != null
+              ? grandTotal
+              : selectedTax != null
+                  ? grandTotal
+                  : selectedProducts.length > 1
+                      ? combosubtotal
+                      : subtotal,
+      'discount':
+          selectedDiscount?.d_amount != null ? selectedDiscount!.d_amount : 0.0,
+      'tax': selectedTax?.t_amount != null ? selectedTax!.t_amount : 0.0,
+    });
+    setState(() {
+      currentPurchaseCount++;
+    });
+    await FirebaseFirestore.instance
+        .collection('Purchase')
+        .doc(brandId)
+        .update({'purchase': currentPurchaseCount});
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -90,14 +103,8 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     );
   }
 
-
-
-
-
-
-
-
-
+  var amounts = "";
+  var label = "";
 
   Future<void> increaseItemByOnesupplier(String itemId) async {
     try {
@@ -111,6 +118,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       print("CurrentValue $currentValue");
 
       int? parsedValue = int.tryParse(currentValue);
+
       if (parsedValue != null) {
         int incrementedValue = parsedValue + 1;
         print("incrementedValue $incrementedValue");
@@ -123,102 +131,271 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       } else {
         print("Failed to parse the current value as an integer");
       }
-
-      // int incrementedValue = int.parse(currentValue) + 1;
-      //
-      // print("incrementedValue $incrementedValue");
-
       print('Item value incremented successfully.');
     } catch (error) {
       print('Error incrementing item value: $error');
     }
   }
 
-  int selectedItemCount =0;
+  int selectedItemCount = 0;
+  double extraamount = 0.0;
+  double extragrand = 0.0;
 
+  FocusNode _extraAmountFocusNode = FocusNode();
 
-  void calculateGrandTotalwithTax() {
-    if (selectedTax != null) {
-      double? taxAmount = double.tryParse(selectedTax!.t_amount);
-      if (taxAmount != null) {
-        if (taxAmount < 1) {
-          // Discount amount is a percentage (e.g., 0.6)
-          double taxPercentage = taxAmount;
-          double taxValue = subtotal * taxPercentage;
-          grandTotal = subtotal + taxValue;
-          isPercentagetax = true;
-        } else {
-          // Discount amount is a fixed amount (e.g., 50)
-          grandTotal = subtotal + taxAmount;
-          isPercentagetax = false;
-        }
+  double extraValueForSecondProduct=0.0;
+
+  void newextralastgrand() {
+    print("Global Discount: $globalGrandTotal");
+    print("Tax Global: $taxgrand");
+    print("ExtraGlobal: $extragrand");
+    if (selectedProducts.length > 1) {
+      if (_extraamountController.text.isEmpty) {
+        extraForSecondProduct = extragrand;
+        print("snhss dghsg  gwg wg $extraForSecondProduct");
+        extraValueForSecondProduct =
+            (selectedDiscount != null && selectedTax != null)
+                ? grandTotal
+                : selectedDiscount != null
+                    ? grandTotal
+                    : (_extraamountController != null &&
+                            _extraamountController.text.isNotEmpty)
+                        ? grandTotal
+                        : grandTotal;
+        print("11727927922 $extraValueForSecondProduct");
+        grandTotal = extraValueForSecondProduct + extraForSecondProduct;
+        print("si hhdh hd hdh  $grandTotal");
+        extragrand = grandTotal;
       } else {
-        grandTotal = subtotal;
-        isPercentagetax = false;
+        print("qiy3wyye7y y  7 y33 $extragrand");
+        extragrand += grandTotal;
+        print("no no no ononono  $extragrand");
       }
     } else {
-      grandTotal = subtotal;
-      isPercentagetax = false;
+      extragrand = grandTotal;
+      print("16282  gg g gd $extragrand");
     }
   }
 
-  void calculateGrandTotal() {
-    if (selectedDiscount != null) {
-      double? discountAmount = double.tryParse(selectedDiscount!.d_amount);
-      if (discountAmount != null) {
-        if (discountAmount < 1) {
-          // Discount amount is a percentage (e.g., 0.6)
-          double discountPercentage = discountAmount;
-          double discountValue = subtotal * discountPercentage;
-          grandTotal = subtotal - discountValue;
-          isPercentageDiscount = true;
-        } else {
-          // Discount amount is a fixed amount (e.g., 50)
-          grandTotal = subtotal - discountAmount;
-          isPercentageDiscount = false;
-        }
+  double? discountValue;
+  double disc = 0.0;
+
+  double? taxValue;
+  double globalGrandTotal = 0.0;
+  //
+  // void calculateGrandTotal() {
+  //   print("subtotala sh ags $previoussubtotal");
+  //   // if (selectedDiscount  == 0) {
+  //   //   grandTotal = previoussubtotal; // Store the original subtotal
+  //   // }
+  //   if (selectedDiscount != null) {
+  //     double? discAmount = double.tryParse(selectedDiscount!.d_amount);
+  //     if (discAmount != null) {
+  //       if (discAmount < 1) {
+  //         // Discount amount is a percentage (e.g., 0.6)
+  //         double discountPercentage = discAmount;
+  //         double discountValue = previoussubtotal * discountPercentage;
+  //         double rateWithTax = double.tryParse(_ratesController.text)! * discountPercentage;
+  //         _ratesController.text = rateWithTax.toStringAsFixed(2);
+  //         print("new new new rats ${_ratesController.text}");
+  //         print("Discount value: $discountValue");
+  //         double discountSubtotal = previoussubtotal - discountValue;
+  //         print("Discounted Subtotal: $discountSubtotal");
+  //         grandTotal = discountSubtotal;
+  //         disc = grandTotal;
+  //         globalGrandTotal = grandTotal;
+  //       } else {
+  //         // Discount amount is a fixed amount (e.g., 50)
+  //         double discountSubtotal = previoussubtotal - discAmount;
+  //         print("Discounted Subtotal: $discountSubtotal");
+  //         grandTotal = discountSubtotal;
+  //         disc = grandTotal;
+  //         globalGrandTotal = grandTotal;
+  //         double rateWithTax = double.tryParse(_ratesController.text)! + discAmount ;
+  //         _ratesController.text = rateWithTax.toStringAsFixed(2);
+  //       }
+  //     } else {
+  //       grandTotal = previoussubtotal;
+  //       print("No Discount Subtotal: ${grandTotal.toString()}");
+  //       disc = grandTotal;
+  //       globalGrandTotal = grandTotal;
+  //     }
+  //   }
+  //   // if (selectedProducts.length > 1) {
+  //   //   globalGrandTotal += grandTotal;
+  //   // }
+  //   // else{
+  //   //   globalGrandTotal = grandTotal;
+  //   // }
+  // }
+
+  double taxgrand = 0.0;
+
+  // void calculateGrandTotalwithTax() {
+  //   if (selectedTax != null) {
+  //     double? taxAmount = double.tryParse(selectedTax!.t_amount);
+  //     if (taxAmount != null) {
+  //       if (taxAmount < 1) {
+  //         // Tax amount is a percentage (e.g., 0.6)
+  //         double taxPercentage = taxAmount;
+  //         taxValue =
+  //             (selectedDiscount != null ? globalGrandTotal : grandTotal) *
+  //                 taxPercentage;
+  //
+  //         double rateWithTax = double.tryParse(_ratesController.text)! / taxPercentage!;
+  //         _ratesController.text = rateWithTax.toStringAsFixed(2);
+  //         print("Tax value rates controller: ${_ratesController.text}");
+  //         print("Tax value: $taxValue");
+  //         taxAdd = (selectedDiscount != null ? globalGrandTotal : grandTotal) +
+  //             taxValue!;
+  //         print("Discounted Grand Total with Tax: ${taxAdd.toString()}");
+  //         grandTotal = taxAdd!;
+  //         disc = grandTotal;
+  //       } else {
+  //         double discountAdd =
+  //             (selectedDiscount != null ? globalGrandTotal : grandTotal) +
+  //                 taxAmount;
+  //         print(
+  //             "Grand Total without Percentage discount add: ${discountAdd.toString()}");
+  //         // print("Grand Total without Percentage: ${grandTotal.toString()}");
+  //
+  //         grandTotal = discountAdd;
+  //
+  //         print(
+  //             "Grand Total without Percentage abaghagsjgs s: ${grandTotal.toString()}");
+  //
+  //         disc = grandTotal;
+  //       }
+  //     }
+  //     else {
+  //       grandTotal = selectedProducts.length > 1 ? combosubtotal : subtotal;
+  //       print("No Tax Sub Total: ${grandTotal.toString()}");
+  //       disc = grandTotal;
+  //       print("Tax Grand Total: $disc");
+  //     }
+  //   }
+  // }
+
+  double discountForSecondProduct = 0.0;
+
+  double extraForSecondProduct = 0.0;
+
+  void newlastgrand() {
+    print("new last grand global: $globalGrandTotal");
+    print("new last grand Tax Global: $taxgrand");
+    if (selectedProducts.length > 1) {
+      if (selectedTax == null) {
+        double taxValueForSecondProduct;
+        taxValueForSecondProduct = taxgrand;
+        print("haajajakhdjhss $taxValueForSecondProduct");
+        discountForSecondProduct = selectedDiscount != null
+            ? grandTotal
+            : (_extraamountController != null &&
+                    _extraamountController.text.isNotEmpty)
+                ? grandTotal
+                : subtotal;
+        print("62228 $discountForSecondProduct");
+        grandTotal = discountForSecondProduct + taxValueForSecondProduct;
+        print("taxValueForSecondProductjsjsjs $grandTotal");
+        print("Updated Tax Grand Total: $grandTotal");
+        taxgrand = grandTotal;
+        print("Updated Tax Grand Grand Total: $taxgrand");
       } else {
-        grandTotal = subtotal;
-        isPercentageDiscount = false;
+        print("Tax Grand Total: $grandTotal");
+        taxgrand += grandTotal;
+        print("Updated Tax Grand Total: $taxgrand");
       }
     } else {
-      grandTotal = subtotal;
-      isPercentageDiscount = false;
+      taxgrand = grandTotal;
+      print("Updated Tax Grand Total: $taxgrand");
     }
   }
-    void assignGrandTotal() {
-      setState(() {
-        if (amountPaidController.text.isNotEmpty) {
-          double enteredValue = double.parse(amountPaidController.text);
-          if( grandTotal!=null ){
-            displaybalancedue = grandTotal - enteredValue;
-            print("Grand Null Display is $displaybalancedue");
-          }
-          if( subtotal!=null ){
-            displaybalancedue = subtotal - enteredValue;
-            print("Sub Null Display is $displaybalancedue");
-          }
-        } else {
-          if (grandTotal != null) {
-            displaybalancedue = grandTotal;
-            print("Gand Display is $displaybalancedue");
-          }
-          displaybalancedue = subtotal;
-          print("Sub Display is $displaybalancedue");
-        }
-      });
+
+  double taxForSecondProduct = 0.0;
+
+  double nothingForSecondProduct = 0.0;
+
+  void newlastgranddiscount() {
+    print("new last grand discount Global Discount: $globalGrandTotal");
+    print("new last grand discount Tax Global: $taxgrand");
+    if (selectedProducts.length > 1) {
+      if (selectedDiscount == null && selectedTax == null) {
+        double discountValueForSecondProduct;
+        discountValueForSecondProduct = globalGrandTotal;
+        print("tahat sha pi do do do  $discountValueForSecondProduct");
+        nothingForSecondProduct = selectedTax != null
+            ? grandTotal
+            : (_extraamountController != null &&
+                    _extraamountController.text.isNotEmpty)
+                ? grandTotal
+                : subtotal;
+        print("values of the disco $nothingForSecondProduct");
+        grandTotal = nothingForSecondProduct + discountValueForSecondProduct;
+        print("geto grand total $grandTotal");
+        print("Updated Tax Grand Total for disico: $grandTotal");
+        globalGrandTotal = grandTotal;
+        print("Updated Tax Grand Grand disico Total : $globalGrandTotal");
+      }
+
+      if (selectedDiscount == null) {
+        double discountValueForSecondProduct;
+        discountValueForSecondProduct = globalGrandTotal;
+        print("tahat sha pi do do do  $discountValueForSecondProduct");
+        taxForSecondProduct = selectedTax != null
+            ? grandTotal
+            : (_extraamountController != null &&
+                    _extraamountController.text.isNotEmpty)
+                ? grandTotal
+                : subtotal;
+        print("values of the disco $taxForSecondProduct");
+        grandTotal = taxForSecondProduct + discountValueForSecondProduct;
+        print("geto grand total $grandTotal");
+        print("Updated Tax Grand Total for disico: $grandTotal");
+        globalGrandTotal = grandTotal;
+        print("Updated Tax Grand Grand disico Total : $globalGrandTotal");
+      } else {
+        print("discount disico Grand Total: $grandTotal");
+        globalGrandTotal += grandTotal;
+        print("Updated Global Grand Total: $globalGrandTotal");
+      }
+    } else {
+      globalGrandTotal = grandTotal;
+      print("Updated last Global Grand Total: $taxgrand");
     }
+  }
+
+  double? discountadd;
+
+  void assignGrandTotal() {
+    print("Grand total balance due ${disc.toString()}");
+    print("Grand total balance due ${subtotal.toString()}");
+
+    setState(() {
+      if (amountPaidController.text.isNotEmpty) {
+        double enteredValue = double.parse(amountPaidController.text);
+        print("Grand total Entered ${enteredValue}");
+        print("Great Grand total Entered ${grandTotal}");
+
+        if (disc == 0) {
+          disc = subtotal - enteredValue;
+        } else {
+          disc = disc - enteredValue;
+        }
+
+        print("Grand Null Display is $displaybalancedue");
+      }
+    });
+  }
 
   String selectedDiscountText = "0"; // Initialize with default value
   String selectedTaxText = "0"; // Initialize with default value
 
-  final _formKey = GlobalKey<FormState>();
-  final _formKeyTax = GlobalKey<FormState>();
   Set<ProductModel> selectedProducts = {}; // Initialize the set
 
   var lable = "";
   final lableController = TextEditingController();
   final amountTextController = TextEditingController();
+  final _extraamountController = TextEditingController();
   String amountText = '';
   String selectedType = 'Amount';
 
@@ -248,23 +425,29 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       selectedType = 'Amount';
     });
   }
+
   TextEditingController amountPaidController = TextEditingController();
-  String? balanceDue ="";
-
-
+  String? balanceDue = "";
 
   @override
-
   void dispose() {
     lableController.dispose();
     amountTextController.dispose();
-    _dateController?.dispose();
+    _ratesController.dispose();
+    _quantityController.dispose();
+    _extraamountController.dispose();
+    _purchasedateController.dispose();
     labletaxController.dispose();
     amountTexttaxController.dispose();
+    _extraamountController.dispose();
     super.dispose();
   }
 
-  final _formKeytax = GlobalKey<FormState>();
+  void resetTextField() {
+    _extraamountController.text = ''; // Clear the text field value
+  }
+
+  final formKey = GlobalKey<FormState>();
 
   var labletax = "";
   final labletaxController = TextEditingController();
@@ -303,6 +486,10 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     });
   }
 
+  String? validationError;
+  String? validationErrorsupplier;
+  String? validationErroritem;
+
   TextEditingController _ratesController = TextEditingController();
   TextEditingController _expiryController = TextEditingController();
   TextEditingController _quantityController = TextEditingController();
@@ -312,19 +499,27 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  int currentPurchaseCount = 0; // Define a variable to hold the current count
-
-  Future<void> fetchPurchaseCount() async {
-    DocumentSnapshot documentSnapshot = await firestore
-        .collection('purchase')
-        .doc('count_document')
+  getDataFromFirebase() async {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('Purchase')
+        .orderBy('purchase')
         .get();
-    if (documentSnapshot.exists) {
-      var data = documentSnapshot.data() as Map<String, dynamic>;
-      if (data.containsKey('count')) {
-        currentPurchaseCount = data['count'] as int;
+
+    if (snapshot.docs.isNotEmpty) {
+      // Iterate over the retrieved documents
+      for (QueryDocumentSnapshot document in snapshot.docs) {
+        Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+        // Access the fields within the document
+        var value = data['purchase'];
+        // Do something with the retrieved data
+        print('Retrieved value: $value');
+        currentPurchaseCount = value;
       }
+    } else {
+      print('No documents found in the collection.');
     }
+
+    print('Current purchase count: $currentPurchaseCount');
   }
 
   void clearTable() {
@@ -334,6 +529,50 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     });
   }
 
+  Future<void> increaseItemByOnewarehouse(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('warehouse')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['cost'];
+
+      print("CurrentValue $currentValue");
+
+      double enteredAmount = double.parse(currentValue);
+      if (enteredAmount != null) {
+        double incrementedValue = enteredAmount +
+            (selectedDiscount != null && selectedTax != null
+                ? grandTotal
+                : selectedDiscount != null
+                    ? grandTotal
+                    : selectedTax != null
+                        ? grandTotal
+                        : selectedProducts.length > 1
+                            ? combosubtotal
+                            : subtotal);
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+
+        // Now you can use the updatedValue as needed
+        await FirebaseFirestore.instance
+            .collection('warehouse')
+            .doc(itemId)
+            .update({'cost': updatedValue});
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      // int incrementedValue = int.parse(currentValue) + 1;
+      //
+      // print("incrementedValue $incrementedValue");
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
 
   Future<void> increaseItemByOneamount(String itemId) async {
     try {
@@ -348,12 +587,11 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
       double enteredAmount = double.parse(currentValue);
       if (enteredAmount != null) {
-        double incrementedValue = enteredAmount + double.parse(amountPaidController.text);
+        double incrementedValue =
+            enteredAmount + double.parse(amountPaidController.text);
         print("incrementedValue $incrementedValue");
         String updatedValue = incrementedValue.toString();
 
-
-        // Now you can use the updatedValue as needed
         await FirebaseFirestore.instance
             .collection('supplier')
             .doc(itemId)
@@ -371,6 +609,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       print('Error incrementing item value: $error');
     }
   }
+
   Future<void> increaseItemByOnebalance(String itemId) async {
     try {
       DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
@@ -387,7 +626,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
         double incrementedValue = enteredAmount + displaybalancedue;
         print("incrementedValue $incrementedValue");
         String updatedValue = incrementedValue.toString();
-
 
         // Now you can use the updatedValue as needed
         await FirebaseFirestore.instance
@@ -407,7 +645,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       print('Error incrementing item value: $error');
     }
   }
-
 
   bool isTableVisible = true;
 
@@ -474,86 +711,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     return {}; // Default empty map if the document doesn't exist
   }
 
-  void buildTable() {
-    tableWidget = SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 31,
-        headingRowColor: MaterialStateColor.resolveWith((states) {
-          return Colors.blue;
-        }),
-        dividerThickness: 3,
-        showBottomBorder: true,
-        columns: [
-          DataColumn(
-            label: Text(
-              'Product',
-              style: GoogleFonts.roboto(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Quantity',
-              style: GoogleFonts.roboto(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Unit Price',
-              style: GoogleFonts.roboto(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Sub Total',
-              style: GoogleFonts.roboto(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Action',
-              style: GoogleFonts.roboto(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-        rows: tableData.map((data) {
-          return DataRow(
-            cells: [
-              DataCell(Text(data['Item'])),
-              DataCell(Text(data['Quantity'])),
-              DataCell(Text(data['Rate'])),
-              DataCell(Text(data['Subtotal'])),
-              DataCell(
-                IconButton(
-                  icon: Icon(Icons.clear),
-                  onPressed: () {
-                    setState(() {
-                      isTableVisible = !isTableVisible;
-                    });
-                  },
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
-    );
-  }
+  bool isButtonClicked = false;
 
   DiscountModel? selectedDiscount;
   TaxModel? selectedTax;
@@ -583,18 +741,136 @@ class _Add_PurchaseState extends State<Add_Purchase> {
   String selected5 = '';
   var setvalue5;
   double subtotal = 0.0;
+  double previoussubtotal = 0.0;
+  double combosubtotal = 0.0;
 
-  //
-  // int newPurchaseCount = currentPurchaseCount + 1;
-  // await firestore.collection('your_collection').doc('count_document').set({
-  // 'count': newPurchaseCount,
-  // });
-  void savePurchase(String ItemID) {
-    int quantity = int.parse(_quantityController.text);
-    double rate = double.parse(_ratesController.text);
-    // Calculate the total amount
+  double lastRate = 0.0;
+  int quantity = 0;
+  double rate = 0.0;
+  void savePurchase(String itemID) {
+    quantity = int.tryParse(_quantityController.text) ?? 0;
+    rate = double.tryParse(_ratesController.text) ?? 0.0;
+    double itemSubtotal =
+        quantity * rate; // Calculate the subtotal for the current item
+    lastRate = rate;
 
-    subtotal = quantity * rate;
+    if (selectedItemCount > 1) {
+      combosubtotal = subtotal + itemSubtotal;
+      disc = combosubtotal;
+      displaybalancedue = combosubtotal;
+      previoussubtotal = itemSubtotal;
+      grandTotal = itemSubtotal;
+      print("Combosubtotal: $combosubtotal");
+    } else {
+      subtotal = itemSubtotal;
+      disc = combosubtotal;
+      displaybalancedue = subtotal;
+      previoussubtotal = subtotal;
+      grandTotal = itemSubtotal;
+      print("Subtotal: $subtotal");
+    }
+  }
+
+  double rateWithextra = 0.0;
+  void calculatedextragrandtotal() {
+    print("ggjgsgjjhgsjjgss $grandTotal");
+
+    if (_extraamountController.text.isNotEmpty) {
+      double extraAmount = double.tryParse(_extraamountController.text) ?? 0.0;
+      double disctamount = extraAmount! / quantity;
+      rateWithextra = ((selectedTax != null && selectedDiscount != null)
+              ? rateWithoutTax
+              : selectedTax != null
+                  ? rateWithoutTax
+                  : selectedDiscount != null
+                      ? rateWithoutDiscount
+                      : lastRate) +
+          disctamount;
+
+      double itemSubtotalWithDiscount = quantity * rateWithextra;
+      _ratesController.text = rateWithextra.toString();
+      grandTotal = itemSubtotalWithDiscount;
+      print("rxts u aahhs sh hs h H $extragrand");
+    }
+  }
+
+  double rateWithoutDiscount = 0.0;
+  calculatediscount() {
+    if (selectedDiscount != null) {
+      double? discountAmount = double.tryParse(selectedDiscount!.d_amount);
+      if (discountAmount != null && discountAmount < 1) {
+        rateWithoutDiscount = lastRate -
+            ((selectedTax != null ? rateWithoutTax : lastRate) *
+                discountAmount);
+
+        double itemSubtotalWithDiscount = quantity * rateWithoutDiscount;
+
+        // Use the original rate for calculations and display
+        _ratesController.text = rateWithoutDiscount.toString();
+        print(
+            "Discount-adjusted rates controller value: ${_ratesController.text}");
+        print(
+            "Item subtotal after discount adjustment: $itemSubtotalWithDiscount");
+
+        grandTotal = itemSubtotalWithDiscount;
+        globalGrandTotal = grandTotal;
+      } else {
+        double disctamount = discountAmount! / quantity;
+        rateWithoutDiscount =
+            (selectedTax != null ? rateWithoutTax : lastRate) - disctamount;
+        double itemSubtotalWithDiscount = quantity * rateWithoutDiscount;
+        _ratesController.text = rateWithoutDiscount.toString();
+        grandTotal = itemSubtotalWithDiscount;
+        globalGrandTotal = grandTotal;
+        print("New enw enww ew $grandTotal");
+        print("New enw enww ew  ahsjgs agjs sg j $rateWithoutDiscount");
+      }
+    } else {
+      grandTotal = previoussubtotal;
+      print("No Discount Subtotal: ${grandTotal.toString()}");
+      disc = grandTotal;
+      globalGrandTotal = grandTotal;
+    }
+  }
+
+  double rateWithoutTax = 0.0;
+  calculatetax() {
+    if (selectedTax != null) {
+      double? discountAmount = double.tryParse(selectedTax!.t_amount);
+      if (discountAmount != null && discountAmount < 1) {
+        rateWithoutTax = lastRate +
+            ((selectedDiscount != null ? rateWithoutDiscount : lastRate) /
+                discountAmount);
+        double itemSubtotalWithDiscount = quantity * rateWithoutTax;
+
+        // Use the original rate for calculations and display
+        _ratesController.text = rateWithoutTax.toString();
+        print(
+            "Discount-adjusted rates controller value: ${_ratesController.text}");
+        print(
+            "Item subtotal after discount adjustment: $itemSubtotalWithDiscount");
+
+        grandTotal = itemSubtotalWithDiscount;
+      } else {
+        double disctamount = discountAmount! / quantity;
+        rateWithoutTax = disctamount! +
+            (selectedDiscount != null ? rateWithoutDiscount : lastRate);
+
+        //  rateWithoutTax = discountAmount! + (selectedDiscount !=null ? rateWithoutDiscount :
+        // lastRate );
+
+        double itemSubtotalWithDiscount = quantity * rateWithoutTax;
+        _ratesController.text = rateWithoutTax.toString();
+        grandTotal = itemSubtotalWithDiscount;
+        print("New enw enww ew $grandTotal");
+        print("New enw enww ew  ahsjgs agjs sg j $rateWithoutTax");
+      }
+    } else {
+      grandTotal = selectedProducts.length > 1 ? combosubtotal : subtotal;
+      print("No Tax Sub Total: ${grandTotal.toString()}");
+      disc = grandTotal;
+      print("Tax Grand Total: $disc");
+    }
   }
 
   TextEditingController _purchasedateController = TextEditingController();
@@ -671,6 +947,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
         child: Column(
           children: [
             Form(
+              key: formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -717,14 +994,21 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                   ),
                   Padding(
                     padding: const EdgeInsets.all(14.0),
-                    child: TextFormField(
-                      enabled: false,
-                      initialValue: (currentPurchaseCount + 1).toString(),
-                      decoration: InputDecoration(
-                        hintText: 'Purchase',
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey, width: 1),
-                          borderRadius: BorderRadius.circular(15),
+                    child: Container(
+                      height: 60,
+                      width: MediaQuery.of(context).size.width / 1.1,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black54, width: 1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 15, top: 15),
+                        child: Text(
+                          (currentPurchaseCount + 1).toString(),
+                          style: GoogleFonts.roboto(
+                              color: Colors.black,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -763,59 +1047,65 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                         child: Padding(
                           padding: const EdgeInsets.all(14.0),
                           child: TextFormField(
-                              controller: _purchasedateController,
-                              decoration: InputDecoration(
-                                hintText: 'Pick Date',
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide:
-                                      BorderSide(color: Colors.grey, width: 1),
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
+                            readOnly: true, // Prevents keyboard from appearing
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              onTap: () async {
-                                DateTime? pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-
-                                if (pickedDate != null) {
+                            ),
+                            controller: _purchasedateController,
+                            onTap: () {
+                              showDatePicker(
+                                context: context,
+                                initialDate: _purchasedateController
+                                        .text.isEmpty
+                                    ? DateTime
+                                        .now() // Use current date if the field is empty
+                                    : DateFormat('dd/MM/yyyy').parse(
+                                        _purchasedateController
+                                            .text), // Parse existing value
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100),
+                              ).then((date) {
+                                if (date != null) {
                                   setState(() {
-                                    _dateController?.text =
-                                        DateFormat('yyyy-MM-dd')
-                                            .format(pickedDate);
+                                    final formattedDate =
+                                        DateFormat('dd/MM/yyyy').format(date);
+                                    _purchasedateController.text =
+                                        formattedDate;
                                   });
                                 }
-                              }),
+                              });
+                            },
+                          ),
                         ),
                       ),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.all(14.0),
                           child: TextFormField(
-                            controller: _due_dateController,
+                            readOnly: true, // Prevents keyboard from appearing
                             decoration: InputDecoration(
-                              hintText: 'Pick Date',
-                              enabledBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.grey, width: 1),
-                                borderRadius: BorderRadius.circular(15),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
-                            onTap: () async {
-                              DateTime? pickdate = await showDatePicker(
+                            controller: _due_dateController,
+                            onTap: () {
+                              showDatePicker(
                                 context: context,
                                 initialDate: DateTime.now(),
                                 firstDate: DateTime(2000),
-                                lastDate: DateTime(2101),
-                              );
-                              if (pickdate != null) {
-                                setState(() {
-                                  _due_dateController.text =
-                                      DateFormat('yyyy-MM-dd').format(pickdate);
-                                });
-                              }
+                                lastDate: DateTime(2100),
+                              ).then((date) {
+                                if (date != null) {
+                                  setState(() {
+                                    final formattedDate =
+                                        DateFormat('dd/MM/yyyy').format(date);
+                                    _due_dateController.text = formattedDate;
+                                  });
+                                }
+                              });
                             },
                           ),
                         ),
@@ -877,12 +1167,16 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                               setState(() {
                                 selectedCategory = value;
                                 setvalue = value;
+                                validationError = null;
                                 print(
                                     'The selected unit ID is ${selectedCategory?.c_id}');
                                 print('The selected unit ID1 is $setvalue');
                                 print(
                                     'The selected unit title is ${selectedCategory?.c_title}');
                                 // Perform further operations with the selected unit
+                                if (selectedCategory == null) {
+                                  validationError = 'Please select a warehouse';
+                                }
                               });
                             },
                           );
@@ -945,12 +1239,18 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                               setState(() {
                                 selectedSupplier = value;
                                 setvalue = value;
+                                validationErrorsupplier = null;
+
                                 print(
                                     'The selected unit ID is ${selectedSupplier?.s_id}');
                                 print('The selected unit ID1 is $setvalue');
                                 print(
                                     'The selected unit title is ${selectedSupplier?.s_name}');
                                 // Perform further operations with the selected unit
+                                if (selectedSupplier == null) {
+                                  validationErrorsupplier =
+                                      'Please select a Supplier';
+                                }
                               });
                             },
                           );
@@ -1016,7 +1316,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                             snapshot.data?.docs.forEach((doc) {
                               String docId = doc.id;
                               String item = doc['item'];
-                              productItems.add(ProductModel(docId, item));
+                              productItems.add(ProductModel(docId, item, 0));
                             });
 
                             // Assign the first brand item as the default selectedBrand
@@ -1036,6 +1336,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                 setState(() {
                                   selectedProduct = value;
                                   setvalue = value;
+                                  validationErroritem = null;
                                   print(
                                       'The selected brand ID is ${selectedProduct!.p_id}');
                                   print(
@@ -1043,17 +1344,22 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                   print(
                                       'The selected brand title is ${selectedProduct!.p_name}');
                                   // Perform further operations with the selected brand
+                                  if (selectedProduct == null) {
+                                    validationErroritem =
+                                        'Please select an Item';
+                                  }
+
                                   if (value != null) {
-                                    selectedProducts?.add(value);
+                                    selectedProducts.add(value);
                                   } else {
-                                    selectedProducts?.remove(selectedProduct);
+                                    selectedProducts.remove(selectedProduct);
                                   }
 
                                   // Update the selected item count
-                                  selectedItemCount = selectedProducts.length ?? 0;
-                                  print("selectedItemCount is $selectedItemCount");
-
-                                  // Perform further operations with the selected brand
+                                  selectedItemCount =
+                                      selectedProducts.length ?? 0;
+                                  print(
+                                      "selectedItemCount is $selectedItemCount");
 
                                   getValuesFromFirebase(selectedProduct!.p_id)
                                       .then((values) {
@@ -1077,202 +1383,691 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                         product.p_name ==
                                             selectedProduct?.p_name &&
                                         product.p_id == selectedProduct?.p_id,
-                                    orElse: () => ProductModel('', ''),
+                                    orElse: () => ProductModel('', '', 0),
                                   );
                                   if (selectedProductModel.p_name.isNotEmpty) {
                                     print(
                                         'Selected Product: ${selectedProductModel.p_name}');
+                                    selectedDiscount = null;
+                                    selectedTax = null;
                                     showDialog(
-                                      context: context,
-                                      builder: (context) => Dialog(
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(20.0),
-                                        ),
-                                        child: SingleChildScrollView(
-                                          child: Container(
-                                            height: 600,
-                                            width: 320,
-                                            decoration: BoxDecoration(
-                                                color: Colors.white,
+                                        context: context,
+                                        builder: (context) {
+                                          return StatefulBuilder(
+                                              builder: (context, setState) {
+                                            return AlertDialog(
+                                              shape: RoundedRectangleBorder(
                                                 borderRadius:
-                                                    BorderRadius.circular(20)),
-                                            child: Form(
-                                              child: Column(
-                                                children: [
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            left: 8,
-                                                            right: 8,
-                                                            top: 25,
-                                                            bottom: 8),
-                                                    child: Text(
-                                                      "${selectedProductModel.p_name} Detail",
-                                                      style: GoogleFonts.roboto(
-                                                        color: Colors.black,
-                                                        fontSize: 18,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  SizedBox(
-                                                    height: 10,
-                                                  ),
-                                                  Container(
-                                                    width: 230,
-                                                    height: 80,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.blue,
+                                                    BorderRadius.circular(20.0),
+                                              ),
+                                              content: SingleChildScrollView(
+                                                child: Container(
+                                                  height: 1300,
+                                                  width: 320,
+                                                  decoration: BoxDecoration(
+                                                      color: Colors.white,
                                                       borderRadius:
                                                           BorderRadius.circular(
-                                                              20),
-                                                    ),
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                              top: 10),
-                                                      child: Column(
-                                                        children: [
-                                                          Text(
-                                                            "Stock Information",
-                                                            style: GoogleFonts
-                                                                .roboto(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 17,
-                                                            ),
-                                                          ),
-                                                          SizedBox(
-                                                            height: 15,
-                                                          ),
-                                                          Text(
-                                                            "Available: ${_quantityController.text}",
-                                                            style: GoogleFonts
-                                                                .roboto(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 17,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  SizedBox(
-                                                    height: 10,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                          child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .only(
-                                                                left: 10,
-                                                                top: 10),
-                                                        child: Text(
-                                                          "Item Unit",
-                                                          style: GoogleFonts
-                                                              .roboto(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize: 16),
-                                                        ),
-                                                      )),
-                                                      Expanded(
-                                                        child: Padding(
+                                                              20)),
+                                                  child: Form(
+                                                    child: Column(
+                                                      children: [
+                                                        Padding(
                                                           padding:
                                                               const EdgeInsets
                                                                       .only(
-                                                                  top: 10,
-                                                                  right: 10),
-                                                          child: TextFormField(
-                                                            initialValue:
-                                                                selectedProductUnit,
-                                                            decoration:
-                                                                InputDecoration(
-                                                              enabledBorder:
-                                                                  OutlineInputBorder(
-                                                                borderSide: BorderSide(
-                                                                    color: Colors
-                                                                        .grey,
-                                                                    width: 1),
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            15),
-                                                              ),
-                                                            ),
-                                                            enabled: false,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                          child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .only(
-                                                                left: 10,
-                                                                top: 10),
-                                                        child: Text(
-                                                          "Item Quantity",
-                                                          style: GoogleFonts
-                                                              .roboto(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize: 16),
-                                                        ),
-                                                      )),
-                                                      Expanded(
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                      .only(
-                                                                  top: 10,
-                                                                  right: 10),
-                                                          child: TextFormField(
-                                                            controller:
-                                                                _quantityController,
-                                                            decoration:
-                                                                InputDecoration(
-                                                              enabledBorder:
-                                                                  OutlineInputBorder(
-                                                                borderSide: BorderSide(
-                                                                    color: Colors
-                                                                        .grey,
-                                                                    width: 1),
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            15),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                      .only(
-                                                                  left: 10,
-                                                                  top: 10),
+                                                                  left: 8,
+                                                                  right: 8,
+                                                                  top: 25,
+                                                                  bottom: 8),
                                                           child: Text(
-                                                            "Expiry",
+                                                            "${selectedProductModel.p_name} Detail",
+                                                            style: GoogleFonts
+                                                                .roboto(
+                                                              color:
+                                                                  Colors.black,
+                                                              fontSize: 18,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        SizedBox(
+                                                          height: 10,
+                                                        ),
+                                                        Container(
+                                                          width: 230,
+                                                          height: 80,
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: Colors.blue,
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        20),
+                                                          ),
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                        .only(
+                                                                    top: 10),
+                                                            child: Column(
+                                                              children: [
+                                                                Text(
+                                                                  "Stock Information",
+                                                                  style:
+                                                                      GoogleFonts
+                                                                          .roboto(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    fontSize:
+                                                                        17,
+                                                                  ),
+                                                                ),
+                                                                SizedBox(
+                                                                  height: 15,
+                                                                ),
+                                                                Text(
+                                                                  "Available: ${_quantityController.text}",
+                                                                  style:
+                                                                      GoogleFonts
+                                                                          .roboto(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    fontSize:
+                                                                        17,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        SizedBox(
+                                                          height: 10,
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                                child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                          .only(
+                                                                      left: 10,
+                                                                      top: 10),
+                                                              child: Text(
+                                                                "Item Unit",
+                                                                style: GoogleFonts.roboto(
+                                                                    color: Colors
+                                                                        .black,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    fontSize:
+                                                                        16),
+                                                              ),
+                                                            )),
+                                                            Expanded(
+                                                              child: Padding(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                            .only(
+                                                                        top: 10,
+                                                                        right:
+                                                                            10),
+                                                                child:
+                                                                    TextFormField(
+                                                                  initialValue:
+                                                                      selectedProductUnit,
+                                                                  decoration:
+                                                                      InputDecoration(
+                                                                    enabledBorder:
+                                                                        OutlineInputBorder(
+                                                                      borderSide: BorderSide(
+                                                                          color: Colors
+                                                                              .grey,
+                                                                          width:
+                                                                              1),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              15),
+                                                                    ),
+                                                                  ),
+                                                                  enabled:
+                                                                      false,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                                child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                          .only(
+                                                                      left: 10,
+                                                                      top: 10),
+                                                              child: Text(
+                                                                "Item Quantity",
+                                                                style: GoogleFonts.roboto(
+                                                                    color: Colors
+                                                                        .black,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    fontSize:
+                                                                        16),
+                                                              ),
+                                                            )),
+                                                            Expanded(
+                                                              child: Padding(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                            .only(
+                                                                        top: 10,
+                                                                        right:
+                                                                            10),
+                                                                child:
+                                                                    TextFormField(
+                                                                  keyboardType:
+                                                                      TextInputType
+                                                                          .number,
+                                                                  controller:
+                                                                      _quantityController,
+                                                                  decoration:
+                                                                      InputDecoration(
+                                                                    enabledBorder:
+                                                                        OutlineInputBorder(
+                                                                      borderSide: BorderSide(
+                                                                          color: Colors
+                                                                              .grey,
+                                                                          width:
+                                                                              1),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              15),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child: Padding(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                            .only(
+                                                                        left:
+                                                                            10,
+                                                                        top:
+                                                                            10),
+                                                                child: Text(
+                                                                  "Expiry",
+                                                                  style: GoogleFonts.roboto(
+                                                                      color: Colors
+                                                                          .black,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      fontSize:
+                                                                          16),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            Expanded(
+                                                              child: Padding(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                            .only(
+                                                                        right:
+                                                                            10,
+                                                                        top:
+                                                                            10),
+                                                                child:
+                                                                    TextFormField(
+                                                                  controller:
+                                                                      _expiryController,
+                                                                  decoration:
+                                                                      InputDecoration(
+                                                                    enabledBorder:
+                                                                        OutlineInputBorder(
+                                                                      borderSide: BorderSide(
+                                                                          color: Colors
+                                                                              .grey,
+                                                                          width:
+                                                                              1),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              15),
+                                                                    ),
+                                                                  ),
+                                                                  onTap:
+                                                                      () async {
+                                                                    DateTime?
+                                                                        pickdate =
+                                                                        await showDatePicker(
+                                                                      context:
+                                                                          context,
+                                                                      initialDate:
+                                                                          DateTime
+                                                                              .now(),
+                                                                      firstDate:
+                                                                          DateTime(
+                                                                              2000),
+                                                                      lastDate:
+                                                                          DateTime(
+                                                                              2101),
+                                                                    );
+                                                                    if (pickdate !=
+                                                                        null) {
+                                                                      setState(
+                                                                          () {
+                                                                        _expiryController
+                                                                            .text = DateFormat(
+                                                                                'yyyy-MM-dd')
+                                                                            .format(pickdate);
+                                                                      });
+                                                                    }
+                                                                  },
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                                child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                          .only(
+                                                                      left: 10,
+                                                                      top: 10),
+                                                              child: Text(
+                                                                "Rates",
+                                                                style: GoogleFonts.roboto(
+                                                                    color: Colors
+                                                                        .black,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    fontSize:
+                                                                        16),
+                                                              ),
+                                                            )),
+                                                            Expanded(
+                                                              child: Padding(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                            .only(
+                                                                        top: 10,
+                                                                        right:
+                                                                            10),
+                                                                child:
+                                                                    TextFormField(
+                                                                        keyboardType:
+                                                                            TextInputType
+                                                                                .number,
+                                                                        controller:
+                                                                            _ratesController,
+                                                                        decoration:
+                                                                            InputDecoration(
+                                                                          enabledBorder:
+                                                                              OutlineInputBorder(
+                                                                            borderSide:
+                                                                                BorderSide(color: Colors.grey, width: 1),
+                                                                            borderRadius:
+                                                                                BorderRadius.circular(15),
+                                                                          ),
+                                                                        ),
+                                                                        onChanged:
+                                                                            (value) {
+                                                                          if (value.isNotEmpty &&
+                                                                              double.tryParse(value) != null) {
+                                                                            savePurchase(selectedProductModel.p_id);
+                                                                          }
+                                                                        }),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        Container(
+                                                          alignment:
+                                                              AlignmentDirectional
+                                                                  .centerStart,
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                        .only(
+                                                                    top: 10,
+                                                                    left: 10,
+                                                                    bottom: 10),
+                                                            child: Text(
+                                                              "Discount",
+                                                              style: GoogleFonts.roboto(
+                                                                  color: Colors
+                                                                      .black,
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                      .only(
+                                                                  left: 14,
+                                                                  right: 14),
+                                                          child: Column(
+                                                            children: <Widget>[
+                                                              Container(
+                                                                width: 329,
+                                                                height: 60,
+                                                                padding: EdgeInsets
+                                                                    .only(
+                                                                        left:
+                                                                            16,
+                                                                        right:
+                                                                            16),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  border: Border.all(
+                                                                      color: Colors
+                                                                          .grey,
+                                                                      width: 1),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              15),
+                                                                ),
+                                                                child: StreamBuilder<
+                                                                    QuerySnapshot>(
+                                                                  stream: FirebaseFirestore
+                                                                      .instance
+                                                                      .collection(
+                                                                          'Discount')
+                                                                      .snapshots(),
+                                                                  builder: (BuildContext
+                                                                          context,
+                                                                      AsyncSnapshot<
+                                                                              QuerySnapshot>
+                                                                          snapshot) {
+                                                                    if (snapshot
+                                                                        .hasError) {
+                                                                      return Text(
+                                                                          'Error: ${snapshot.error}');
+                                                                    }
+                                                                    if (snapshot
+                                                                            .connectionState ==
+                                                                        ConnectionState
+                                                                            .waiting) {
+                                                                      return Center(
+                                                                          child:
+                                                                              CircularProgressIndicator());
+                                                                    }
+                                                                    List<DiscountModel>
+                                                                        discountItems =
+                                                                        [];
+                                                                    discountItems.add(
+                                                                        DiscountModel(
+                                                                            '',
+                                                                            "Please select discount")); // Add default "Please select discount" option
+                                                                    snapshot
+                                                                        .data
+                                                                        ?.docs
+                                                                        .forEach(
+                                                                            (doc) {
+                                                                      String
+                                                                          docId =
+                                                                          doc.id;
+                                                                      String
+                                                                          amount =
+                                                                          doc['amount'];
+                                                                      discountItems.add(DiscountModel(
+                                                                          docId,
+                                                                          amount));
+                                                                    });
+
+                                                                    // Check if the selectedDiscount is null or the default option, then set it to null
+                                                                    if (selectedDiscount ==
+                                                                            null ||
+                                                                        selectedDiscount!
+                                                                            .d_id
+                                                                            .isEmpty ||
+                                                                        selectedDiscount!.d_amount ==
+                                                                            "Please select discount") {
+                                                                      selectedDiscount =
+                                                                          null;
+                                                                    }
+
+                                                                    return DropdownButton<
+                                                                        DiscountModel>(
+                                                                      iconSize:
+                                                                          40,
+                                                                      isExpanded:
+                                                                          true,
+                                                                      underline:
+                                                                          SizedBox(),
+                                                                      value:
+                                                                          selectedDiscount,
+                                                                      items: discountItems
+                                                                          .map(
+                                                                              (discount) {
+                                                                        return DropdownMenuItem<
+                                                                            DiscountModel>(
+                                                                          value:
+                                                                              discount,
+                                                                          child:
+                                                                              Text(discount.d_amount),
+                                                                        );
+                                                                      }).toList(),
+                                                                      onChanged:
+                                                                          (value) {
+                                                                        setState(
+                                                                            () {
+                                                                          selectedDiscount =
+                                                                              value;
+                                                                          setvalue =
+                                                                              value;
+                                                                          selectedDiscountText = (selectedDiscount != null)
+                                                                              ? selectedDiscount!.d_amount
+                                                                              : "0";
+                                                                          // calculateGrandTotal();
+                                                                          calculatediscount();
+                                                                          print(
+                                                                              'The selected unit ID is ${selectedDiscount?.d_id}');
+                                                                          print(
+                                                                              'The selected unit ID is ${selectedDiscountText}');
+                                                                          print(
+                                                                              'The selected unit ID1 is $setvalue');
+                                                                          print(
+                                                                              'The selected unit title is ${selectedDiscount?.d_amount}');
+                                                                        });
+                                                                      },
+                                                                    );
+                                                                  },
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        Container(
+                                                          alignment:
+                                                              AlignmentDirectional
+                                                                  .centerStart,
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                        .only(
+                                                                    top: 10,
+                                                                    left: 10,
+                                                                    bottom: 10),
+                                                            child: Text(
+                                                              "Tax",
+                                                              style: GoogleFonts.roboto(
+                                                                  color: Colors
+                                                                      .black,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontSize: 16),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                      .only(
+                                                                  left: 14,
+                                                                  right: 14),
+                                                          child: Column(
+                                                            children: <Widget>[
+                                                              Container(
+                                                                width: 280,
+                                                                height: 60,
+                                                                padding: EdgeInsets
+                                                                    .only(
+                                                                        left:
+                                                                            16,
+                                                                        right:
+                                                                            0),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  border: Border.all(
+                                                                      color: Colors
+                                                                          .grey,
+                                                                      width: 1),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              15),
+                                                                ),
+                                                                child: StreamBuilder<
+                                                                    QuerySnapshot>(
+                                                                  stream: FirebaseFirestore
+                                                                      .instance
+                                                                      .collection(
+                                                                          'tax')
+                                                                      .snapshots(),
+                                                                  builder: (BuildContext
+                                                                          context,
+                                                                      AsyncSnapshot<
+                                                                              QuerySnapshot>
+                                                                          snapshot) {
+                                                                    if (snapshot
+                                                                        .hasError) {
+                                                                      return Text(
+                                                                          'Error: ${snapshot.error}');
+                                                                    }
+                                                                    if (snapshot
+                                                                            .connectionState ==
+                                                                        ConnectionState
+                                                                            .waiting) {
+                                                                      return Center(
+                                                                          child:
+                                                                              CircularProgressIndicator());
+                                                                    }
+                                                                    List<TaxModel>
+                                                                        unitItems =
+                                                                        [];
+                                                                    snapshot
+                                                                        .data
+                                                                        ?.docs
+                                                                        .forEach(
+                                                                            (doc) {
+                                                                      String
+                                                                          docId =
+                                                                          doc.id;
+                                                                      String
+                                                                          title =
+                                                                          doc['amount'];
+                                                                      unitItems.add(TaxModel(
+                                                                          docId,
+                                                                          title));
+                                                                    });
+
+                                                                    return DropdownButton<
+                                                                        TaxModel>(
+                                                                      iconSize:
+                                                                          40,
+                                                                      isExpanded:
+                                                                          true,
+                                                                      underline:
+                                                                          SizedBox(),
+                                                                      hint: Text(
+                                                                          'Select Tax'),
+                                                                      value:
+                                                                          selectedTax,
+                                                                      items: unitItems
+                                                                          .map(
+                                                                              (unit) {
+                                                                        return DropdownMenuItem<
+                                                                            TaxModel>(
+                                                                          value:
+                                                                              unit,
+                                                                          child:
+                                                                              Text(unit.t_amount),
+                                                                        );
+                                                                      }).toList(),
+                                                                      onChanged:
+                                                                          (value) {
+                                                                        setState(
+                                                                            () {
+                                                                          selectedTax =
+                                                                              value;
+                                                                          setvalue =
+                                                                              value;
+                                                                          selectedTaxText = (selectedTax != null)
+                                                                              ? selectedTax!.t_amount
+                                                                              : "0";
+                                                                          calculatetax();
+                                                                          // calculateGrandTotalwithTax();
+                                                                          // savePurchase(selectedProductModel.p_id);
+
+                                                                          print(
+                                                                              'The selected unit ID is ${selectedTax?.t_id}');
+                                                                          print(
+                                                                              'The selected unit ID1 is $setvalue');
+                                                                          print(
+                                                                              'The selected unit title is ${selectedTax?.t_amount}');
+                                                                          // Perform further operations with the selected unit
+                                                                        });
+                                                                      },
+                                                                    );
+                                                                  },
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                height: 10.0,
+                                                              ),
+                                                              Text(
+                                                                selected5,
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontSize:
+                                                                      20.0,
+                                                                  color: Colors
+                                                                      .blue,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                      .only(
+                                                                  left: 30,
+                                                                  top: 30),
+                                                          child: Text(
+                                                            "Add Extra Charges",
                                                             style: GoogleFonts
                                                                 .roboto(
                                                                     color: Colors
@@ -1281,22 +2076,44 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                                                         FontWeight
                                                                             .bold,
                                                                     fontSize:
+                                                                        20),
+                                                          ),
+                                                        ),
+                                                        SizedBox(
+                                                          height: 10,
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(
+                                                            left: 10,
+                                                          ),
+                                                          child: Text(
+                                                            "Charge Amount",
+                                                            style: GoogleFonts
+                                                                .roboto(
+                                                                    color: Colors
+                                                                        .black,
+                                                                    fontSize:
                                                                         16),
                                                           ),
                                                         ),
-                                                      ),
-                                                      Expanded(
-                                                        child: Padding(
+                                                        Padding(
                                                           padding:
                                                               const EdgeInsets
-                                                                      .only(
-                                                                  right: 10,
-                                                                  top: 10),
+                                                                  .all(14.0),
                                                           child: TextFormField(
                                                             controller:
-                                                                _expiryController,
+                                                                _extraamountController,
+                                                            focusNode:
+                                                                _extraAmountFocusNode,
+                                                            keyboardType:
+                                                                TextInputType
+                                                                    .number,
                                                             decoration:
                                                                 InputDecoration(
+                                                              hintText:
+                                                                  'Amount',
                                                               enabledBorder:
                                                                   OutlineInputBorder(
                                                                 borderSide: BorderSide(
@@ -1309,233 +2126,167 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                                                             15),
                                                               ),
                                                             ),
-                                                            onTap: () async {
-                                                              DateTime?
-                                                                  pickdate =
-                                                                  await showDatePicker(
-                                                                context:
-                                                                    context,
-                                                                initialDate:
-                                                                    DateTime
-                                                                        .now(),
-                                                                firstDate:
-                                                                    DateTime(
-                                                                        2000),
-                                                                lastDate:
-                                                                    DateTime(
-                                                                        2101),
-                                                              );
-                                                              if (pickdate !=
-                                                                  null) {
-                                                                setState(() {
-                                                                  _expiryController
-                                                                      .text = DateFormat(
-                                                                          'yyyy-MM-dd')
-                                                                      .format(
-                                                                          pickdate);
-                                                                });
-                                                              }
+                                                            onFieldSubmitted:
+                                                                (value) {
+                                                              calculatedextragrandtotal();
                                                             },
                                                           ),
                                                         ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                          child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .only(
-                                                                left: 10,
-                                                                top: 10),
-                                                        child: Text(
-                                                          "Rates",
-                                                          style: GoogleFonts
-                                                              .roboto(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize: 16),
-                                                        ),
-                                                      )),
-                                                      Expanded(
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                      .only(
-                                                                  top: 10,
-                                                                  right: 10),
-                                                          child: TextFormField(
-                                                            controller:
-                                                                _ratesController,
-                                                            decoration:
-                                                                InputDecoration(
-                                                              enabledBorder:
-                                                                  OutlineInputBorder(
-                                                                borderSide: BorderSide(
+                                                        Container(
+                                                          alignment:
+                                                              AlignmentDirectional
+                                                                  .centerStart,
+                                                          child: Text(
+                                                            // "Rs. ${
+                                                            //     (selectedDiscount !=null &&
+                                                            //         selectedTax !=null) ?
+                                                            //     taxgrand.toString() :
+                                                            //     selectedDiscount !=null ?globalGrandTotal.toString()
+                                                            //     : selectedTax != null ? taxgrand.toString() :
+                                                            //     selectedProducts.length > 1 ? combosubtotal:
+                                                            //     subtotal.toString()}",
+                                                            grandTotal
+                                                                .toString(),
+                                                            style: GoogleFonts
+                                                                .poppins(
                                                                     color: Colors
-                                                                        .grey,
-                                                                    width: 1),
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            15),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                          child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .only(
-                                                                left: 10,
-                                                                top: 10),
-                                                        child: Text(
-                                                          "Total ",
-                                                          style: GoogleFonts
-                                                              .roboto(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize: 16),
-                                                        ),
-                                                      )),
-                                                      Expanded(
-                                                          child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .only(
-                                                                left: 20,
-                                                                top: 10),
-                                                        child: Text(
-                                                          "501",
-                                                          style: GoogleFonts
-                                                              .roboto(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize: 18),
-                                                        ),
-                                                      )),
-                                                    ],
-                                                  ),
-                                                  SizedBox(height: 40),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                          child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .only(
-                                                                left: 10,
-                                                                top: 10,
-                                                                right: 10),
-                                                        child: Container(
-                                                          height: 40,
-                                                          width: 80,
-                                                          decoration: BoxDecoration(
-                                                              color: Colors.grey
-                                                                  .shade500,
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          20)),
-                                                          child: Center(
-                                                            child: Text(
-                                                              "Cancel",
-                                                              style: GoogleFonts
-                                                                  .roboto(
-                                                                      color: Colors
-                                                                          .white,
-                                                                      fontSize:
-                                                                          16),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )),
-                                                      Expanded(
-                                                          child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .only(
-                                                                left: 10,
-                                                                top: 10,
-                                                                right: 10),
-                                                        child: InkWell(
-                                                          onTap: () {
-                                                            Navigator.of(
-                                                                    context)
-                                                                .pop();
-                                                            savePurchase(
-                                                                selectedProductModel!
-                                                                    .p_id);
-                                                            setState(() {
-                                                              tableData.add({
-                                                                'Item':
-                                                                    selectedProductModel
-                                                                        .p_name,
-                                                                'Quantity':
-                                                                    _quantityController
-                                                                        .text,
-                                                                'Rate':
-                                                                    _ratesController
-                                                                        .text,
-                                                                'Subtotal': subtotal
-                                                                    .toString(),
-                                                              });
-                                                              showTable = true;
-                                                            });
-                                                            setState(() {
-                                                              buildTable();
-                                                              _toggleTable();
-                                                            });
-                                                          },
-                                                          child: Container(
-                                                            height: 40,
-                                                            width: 80,
-                                                            decoration: BoxDecoration(
-                                                                color:
-                                                                    Colors.blue,
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            20)),
-                                                            child: Center(
-                                                              child: Text(
-                                                                "Add",
-                                                                style: GoogleFonts.roboto(
-                                                                    color: Colors
-                                                                        .white,
+                                                                        .black,
                                                                     fontSize:
-                                                                        16),
-                                                              ),
-                                                            ),
+                                                                        18,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold),
                                                           ),
                                                         ),
-                                                      )),
-                                                    ],
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                                child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                          .only(
+                                                                      left: 10,
+                                                                      top: 10,
+                                                                      right:
+                                                                          10),
+                                                              child: Container(
+                                                                height: 40,
+                                                                width: 80,
+                                                                decoration: BoxDecoration(
+                                                                    color: Colors
+                                                                        .grey
+                                                                        .shade500,
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                            20)),
+                                                                child: Center(
+                                                                  child: Text(
+                                                                    "Cancel",
+                                                                    style: GoogleFonts.roboto(
+                                                                        color: Colors
+                                                                            .white,
+                                                                        fontSize:
+                                                                            16),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            )),
+                                                            Expanded(
+                                                                child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                          .only(
+                                                                      left: 10,
+                                                                      top: 10,
+                                                                      right:
+                                                                          10),
+                                                              child: InkWell(
+                                                                onTap: () {
+                                                                  amounts =
+                                                                      _extraamountController
+                                                                          .text;
+                                                                  Navigator.of(
+                                                                          context)
+                                                                      .pop();
+                                                                  newlastgranddiscount();
+                                                                  newlastgrand();
+                                                                  calculatedextragrandtotal();
+                                                                  newextralastgrand();
+                                                                  setState(() {
+                                                                    tableData
+                                                                        .add({
+                                                                      'Item': selectedProductModel
+                                                                          .p_name,
+                                                                      'Quantity':
+                                                                          _quantityController
+                                                                              .text,
+                                                                      'Rate': _ratesController
+                                                                          .text,
+                                                                      'Subtotal':
+                                                                          previoussubtotal,
+                                                                      'Discount': (selectedProducts.length > 1 &&
+                                                                              selectedDiscount == null)
+                                                                          ? '0'
+                                                                          : "${selectedDiscountText}${selectedDiscount != null && double.parse(selectedDiscount!.d_amount) < 1 ? '%' : ''}",
+                                                                      'Tax': (selectedProducts.length > 1 &&
+                                                                              selectedTax == null)
+                                                                          ? '0'
+                                                                          : "${selectedTaxText}${selectedTax != null && double.parse(selectedTax!.t_amount) < 1 ? '%' : ''}",
+                                                                      'Amount': (selectedProducts.length > 1 &&
+                                                                          (_extraamountController.text == null ||  _extraamountController.text.isEmpty))
+                                                                          ? '0'
+                                                                          : amounts.toString(),
+                                                                      'Grandtotal':
+                                                                      (selectedProducts.length > 1 &&
+                                                                          _extraamountController.text.isEmpty) ? extraValueForSecondProduct :
+                                                                      (selectedProducts.length > 1 &&
+                                                                              selectedTax ==
+                                                                                  null)
+                                                                          ? discountForSecondProduct
+                                                                              .toString()
+                                                                          : (selectedProducts.length > 1 && selectedDiscount == null)
+                                                                              ? taxForSecondProduct.toString()
+                                                                              : grandTotal.toString(),
+                                                                    });
+                                                                  });
+                                                                },
+                                                                child:
+                                                                    Container(
+                                                                  height: 40,
+                                                                  width: 80,
+                                                                  decoration: BoxDecoration(
+                                                                      color: Colors
+                                                                          .blue,
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              20)),
+                                                                  child: Center(
+                                                                    child: Text(
+                                                                      "Add",
+                                                                      style: GoogleFonts.roboto(
+                                                                          color: Colors
+                                                                              .white,
+                                                                          fontSize:
+                                                                              16),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            )),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
-                                                ],
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
+                                            );
+                                          });
+                                        })
+                                      ..then((value) {
+                                        // Reset the text field value when the dialog is closed
+                                        resetTextField();
+                                      });
                                   }
                                 });
                               },
@@ -1543,13 +2294,143 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           },
                         )),
                   ),
-
                   SizedBox(
                     height: 20,
                   ),
                   if (tableWidget != null) tableWidget!,
                   SizedBox(
                     height: 20,
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columnSpacing: 35,
+                      headingRowColor: MaterialStateColor.resolveWith(
+                        (states) {
+                          return Colors.blue;
+                        },
+                      ),
+                      dividerThickness: 3,
+                      showBottomBorder: true,
+                      columns: [
+                        DataColumn(
+                          label: Text(
+                            'Product',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Quantity',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Unit Price',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Sub Total',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Discount',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Tax',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Extra Amount',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Grand Total',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                      rows: tableData.map((data) {
+                        return DataRow(
+                          cells: [
+                            DataCell(Text(data['Item'])),
+                            DataCell(Text(data['Quantity'])),
+                            DataCell(Text(data['Rate'])),
+                            DataCell(
+                              Text(
+                                data['Subtotal'].toString(),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                data['Discount'].toString(),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                data['Tax'].toString(),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                data['Amount'].toString(),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                data['Grandtotal'].toString(),
+                              ),
+                            ),
+                            // DataCell(
+                            //   IconButton(
+                            //     icon: Icon(Icons.clear),
+                            //     onPressed: () {
+                            //       setState(() {
+                            //         isTableVisible = !isTableVisible;
+                            //       });
+                            //     },
+                            //   ),
+                            // ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 15),
@@ -1595,95 +2476,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           child: Padding(
                         padding: const EdgeInsets.only(left: 30, top: 10),
                         child: Text(
-                          "Rs. ${subtotal.toString()}",
-                          style: GoogleFonts.roboto(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18),
-                        ),
-                      )),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: Padding(
-                        padding: const EdgeInsets.only(left: 30, top: 10),
-                        child: Row(
-                          children: [
-                            Text(
-                              "Discount",
-                              style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16),
-                            ),
-                            SizedBox(
-                              width: 5,
-                            ),
-                            InkWell(
-                                onTap: () {
-                                  showDialog(
-                                      context: context,
-                                      builder: (context) => showMyDialog());
-                                },
-                                child: Icon(
-                                  FontAwesomeIcons.edit,
-                                  color: Colors.black,
-                                  size: 18,
-                                ))
-                          ],
-                        ),
-                      )),
-                      Expanded(
-                          child: Padding(
-                        padding: const EdgeInsets.only(left: 30, top: 10),
-                        child: Text(
-                          "Rs. ${selectedDiscountText}${selectedDiscount != null && double.parse(selectedDiscount!.d_amount) < 1 ? '%' : ''}",
-                          style: GoogleFonts.roboto(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 17),
-                        ),
-                      )),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: Padding(
-                        padding: const EdgeInsets.only(left: 30, top: 10),
-                        child: Row(
-                          children: [
-                            Text(
-                              "Tax",
-                              style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16),
-                            ),
-                            SizedBox(
-                              width: 5,
-                            ),
-                            IconButton(
-                                onPressed: () {
-                                  showDialog(
-                                      context: context,
-                                      builder: (context) => showTaxDialog());
-                                },
-                                icon: Icon(
-                                  FontAwesomeIcons.edit,
-                                  color: Colors.black,
-                                  size: 17,
-                                )),
-                          ],
-                        ),
-                      )),
-                      Expanded(
-                          child: Padding(
-                        padding: const EdgeInsets.only(left: 30, top: 10),
-                        child: Text(
-                          "Rs. ${selectedTaxText}${selectedTax != null && double.parse(selectedTax!.t_amount) < 1 ? '%' : ''}",
+                          "Rs. ${selectedProducts.length > 1 ? combosubtotal.toStringAsFixed(2) : subtotal.toStringAsFixed(2)}",
                           style: GoogleFonts.roboto(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
@@ -1709,10 +2502,10 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           child: Padding(
                         padding: const EdgeInsets.only(left: 30, top: 10),
                         child: Text(
-                          'Rs. ${selectedDiscount != null && selectedTax != null ?
-                          grandTotal.toString() : selectedDiscount != null ?
-                          grandTotal.toString() : selectedTax != null ? grandTotal.toString() :
-                          subtotal.toString()}',
+                          'Rs. ${
+                              (extragrand != null && extragrand > 0)
+                                  ? extragrand.toString() :
+                              (selectedDiscount != null && selectedTax != null) ? taxgrand.toString() : (selectedProducts.length > 1 && selectedTax == null) ? taxgrand.toString() : selectedDiscount != null ? globalGrandTotal.toString() : selectedTax != null ? taxgrand.toString() : grandTotal.toString()}',
                           style: GoogleFonts.roboto(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
@@ -1827,7 +2620,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                               left: 10, top: 10, right: 20),
                           child: TextFormField(
                             keyboardType: TextInputType.number,
-                            controller:  amountPaidController,
+                            controller: amountPaidController,
                             decoration: InputDecoration(
                               hintText: '0',
                               enabledBorder: OutlineInputBorder(
@@ -1852,6 +2645,9 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                       thickness: 1,
                     ),
                   ),
+                  SizedBox(
+                    height: 10,
+                  ),
                   Row(
                     children: [
                       Expanded(
@@ -1871,42 +2667,125 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                         child: Text(
                           "${displaybalancedue.toString()}",
                           style: GoogleFonts.roboto(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
                         ),
                       )),
                     ],
                   ),
+                  SizedBox(
+                    height: 20,
+                  ),
                   Padding(
-                    padding: const EdgeInsets.only(left: 25, top: 20),
-                    child: Container(
-                      height: 45.0,
-                      width: 320.0,
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          color: Colors.grey.shade400),
-                      child: InkWell(
-                        onTap: () {
-                          showDialog(
-                              context: context,
-                              builder: (context) => showExtraDialog());
-                        },
-                        child: Center(
-                          child: Text(
-                            'Add Extra Charges',
-                            style: TextStyle(
-                              fontSize: 16.0,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
+                    padding:
+                        const EdgeInsets.only(top: 10, left: 15, right: 15),
+                    child: Divider(
+                      color: Colors.grey.shade400,
+                      thickness: 1,
                     ),
                   ),
-
-                  // ignore: deprecated_member_use
+                  Row(
+                    children: [
+                      Expanded(
+                          child: Padding(
+                        padding: const EdgeInsets.only(left: 30, top: 10),
+                        child: Text(
+                          "Total Amount",
+                          style: GoogleFonts.roboto(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                        ),
+                      )),
+                      Expanded(
+                          child: Padding(
+                        padding: const EdgeInsets.only(left: 50, top: 10),
+                        child: Text(
+                          "${disc.toString()}",
+                          style: GoogleFonts.roboto(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      )),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  if (isButtonClicked)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 30, top: 10),
+                          child: Text(
+                            label,
+                            style: GoogleFonts.roboto(
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close),
+                          onPressed: () {
+                            setState(() {
+                              // Reset the extra label, amount, and grand total
+                              label = '';
+                              amounts = '';
+                              grandTotal -= double.tryParse(
+                                      _extraamountController.text) ??
+                                  0.0;
+                              displaybalancedue = grandTotal;
+                              isButtonClicked = false;
+                            });
+                          },
+                        ),
+                        Expanded(
+                            child: Padding(
+                          padding: const EdgeInsets.only(left: 150, top: 10),
+                          child: Text(
+                            amounts,
+                            style: GoogleFonts.roboto(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        )),
+                      ],
+                    ),
+                  // Padding(
+                  //   padding: const EdgeInsets.only(left: 25, top: 20),
+                  //   child: Container(
+                  //     height: 45.0,
+                  //     width: 320.0,
+                  //     decoration: BoxDecoration(
+                  //         borderRadius: BorderRadius.circular(20),
+                  //         color: Colors.grey.shade400),
+                  //     child: InkWell(
+                  //       onTap: () {
+                  //         showDialog(
+                  //             context: context,
+                  //             builder: (context) => showExtraDialog());
+                  //       },
+                  //       child: Center(
+                  //         child: Text(
+                  //           'Add Extra Charges',
+                  //           style: TextStyle(
+                  //             fontSize: 16.0,
+                  //             color: Colors.black,
+                  //           ),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -1948,14 +2827,23 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                 color: Colors.blue),
                             child: InkWell(
                               onTap: () {
-                                Navigator.push(context,
-                                    MaterialPageRoute(builder: (context) => HomeScreen()));
-
+                                if (formKey.currentState!.validate()) {
+                                  setState(() {
+                                    pickdate = _purchasedateController.text;
+                                    duedate = _due_dateController.text;
+                                  });
+                                }
+                                add();
                                 _updateSelectedValues(selectedProduct!.p_id);
                                 increaseItemByOne(selectedProduct!.p_id);
-                                increaseItemByOnebalance(selectedSupplier!.s_id);
+                                increaseItemByOnebalance(
+                                    selectedSupplier!.s_id);
                                 increaseItemByOneamount(selectedSupplier!.s_id);
-                                increaseItemByOnesupplier(selectedSupplier!.s_id);
+                                increaseItemByOnesupplier(
+                                    selectedSupplier!.s_id);
+                                increaseItemByOnewarehouse(
+                                    selectedCategory!.c_id);
+                                print(" it is $currentPurchaseCount");
                               },
                               child: Center(
                                 child: Text(
@@ -1980,730 +2868,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget showMyDialog() {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.0),
-      ),
-      child: SingleChildScrollView(
-        child: Container(
-          height: 600,
-          width: 320,
-          decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(20)),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.only(left: 30, top: 30),
-                  child: Text(
-                    "Add New Discount",
-                    style: GoogleFonts.roboto(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20),
-                  ),
-                ),
-                SizedBox(
-                  height: 40,
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                        ),
-                        child: Text(
-                          "Lable",
-                          style: GoogleFonts.roboto(
-                              color: Colors.black, fontSize: 16),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                        ),
-                        child: Text(
-                          "Amount",
-                          style: GoogleFonts.roboto(
-                              color: Colors.black, fontSize: 16),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14.0),
-                          child: TextFormField(
-                            controller: lableController,
-                            decoration: InputDecoration(
-                              hintText: 'Lable',
-                              enabledBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.grey, width: 1),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14.0),
-                          child: TextFormField(
-                            controller: amountTextController,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              hintText: 'Amount',
-                              enabledBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.grey, width: 1),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ]),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10, bottom: 20),
-                  child: Text(
-                    "Discount",
-                    style:
-                        GoogleFonts.roboto(color: Colors.black, fontSize: 16),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 14),
-                  child: Container(
-                    height: 60,
-                    width: 340,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.grey.shade400,
-                        )),
-                    child: DropdownButton<String>(
-                      underline: SizedBox(),
-                      isExpanded: true,
-                      icon: Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Icon(
-                          Icons.arrow_drop_down,
-                          size: 0,
-                        ),
-                      ),
-                      value: selectedType,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          selectedType = newValue!;
-                        });
-                      },
-                      items: <String>['Amount', 'Percentage']
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 10, top: 5),
-                            child: Text(value),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                    SizedBox(width: 40),
-                    Expanded(
-                        child: Text(
-                      "OR",
-                      style:
-                          GoogleFonts.roboto(color: Colors.black, fontSize: 14),
-                    )),
-                    Expanded(
-                      child: Divider(
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 10, left: 10, bottom: 20),
-                  child: Text(
-                    "Discount",
-                    style:
-                        GoogleFonts.roboto(color: Colors.black, fontSize: 16),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 14),
-                  child: Column(
-                    children: <Widget>[
-                      Container(
-                        width: 329,
-                        height: 60,
-                        padding: EdgeInsets.only(left: 16, right: 16),
-                        decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey, width: 1),
-                            borderRadius: BorderRadius.circular(15)),
-                        child: StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('Discount')
-                              .snapshots(),
-                          builder: (BuildContext context,
-                              AsyncSnapshot<QuerySnapshot> snapshot) {
-                            if (snapshot.hasError) {
-                              return Text('Error: ${snapshot.error}');
-                            }
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Center(child: CircularProgressIndicator());
-                            }
-                            List<DiscountModel> discountItems = [];
-                            snapshot.data?.docs.forEach((doc) {
-                              String docId = doc.id;
-                              String amount = doc['amount'];
-                              discountItems.add(DiscountModel(docId, amount));
-                            });
-                            return DropdownButton<DiscountModel>(
-                              iconSize: 40,
-                              isExpanded: true,
-                              underline: SizedBox(),
-                              hint: Text("Select Discount"),
-                              value: selectedDiscount,
-                              items: discountItems.map((discount) {
-                                return DropdownMenuItem<DiscountModel>(
-                                  value: discount,
-                                  child: Text(discount.d_amount),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedDiscount = value;
-                                  setvalue = value;
-                                  selectedDiscountText =
-                                      (selectedDiscount != null)
-                                          ? selectedDiscount!.d_amount
-                                          : "0";
-
-                                  print(
-                                      'The selected unit ID is ${selectedDiscount?.d_id}');
-                                  print(
-                                      'The selected unit ID is ${selectedDiscountText}');
-
-                                  print('The selected unit ID1 is $setvalue');
-                                  print(
-                                      'The selected unit title is ${selectedDiscount?.d_amount}');
-                                  // Perform further operations with the selected unit
-                                });
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        height: 10.0,
-                      ),
-                      Text(
-                        selected,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20.0,
-                          color: Colors.teal[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(
-                  height: 20,
-                ),
-                // ignore: deprecated_member_use
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Container(
-                    height: 45.0,
-                    width: 320.0,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.blue),
-                    child: InkWell(
-                      onTap: () {
-                        if (_formKey.currentState!.validate()) {
-                          setState(() {
-                            lable = lableController.text;
-                            amountText = amountTextController.text;
-                          });
-                          Navigator.of(context).pop();
-                          addButtonPressed();
-                          calculateGrandTotal();
-                        } else {
-                          Navigator.of(context).pop();
-                          calculateGrandTotal();
-                        }
-                      },
-                      child: Center(
-                        child: Text(
-                          'Add',
-                          style: TextStyle(
-                            fontSize: 20.0,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 20.0,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget showTaxDialog() {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.0),
-      ),
-      child: SingleChildScrollView(
-        child: Container(
-          height: 600,
-          width: 320,
-          decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(20)),
-          child: Form(
-            key: _formKeytax,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.only(left: 30, top: 30),
-                  child: Text(
-                    "Add New Tax",
-                    style: GoogleFonts.roboto(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20),
-                  ),
-                ),
-                SizedBox(
-                  height: 40,
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                        ),
-                        child: Text(
-                          "Lable",
-                          style: GoogleFonts.roboto(
-                              color: Colors.black, fontSize: 16),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                        ),
-                        child: Text(
-                          "Amount",
-                          style: GoogleFonts.roboto(
-                              color: Colors.black, fontSize: 16),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14.0),
-                          child: TextFormField(
-                            controller: labletaxController,
-                            decoration: InputDecoration(
-                              hintText: 'Lable',
-                              enabledBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.grey, width: 1),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14.0),
-                          child: TextFormField(
-                            controller: amountTexttaxController,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              hintText: 'Amount',
-                              enabledBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.grey, width: 1),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ]),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10, bottom: 20),
-                  child: Text(
-                    "Type",
-                    style:
-                        GoogleFonts.roboto(color: Colors.black, fontSize: 16),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 14),
-                  child: Container(
-                    height: 60,
-                    width: 340,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.grey.shade400,
-                        )),
-                    child: DropdownButton<String>(
-                      underline: SizedBox(),
-                      isExpanded: true,
-                      icon: Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Icon(
-                          Icons.arrow_drop_down,
-                          size: 0,
-                        ),
-                      ),
-                      value: selectedtaxType,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          selectedtaxType = newValue!;
-                        });
-                      },
-                      items: <String>['Amount', 'Percentage']
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 10, top: 5),
-                            child: Text(value),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                    SizedBox(width: 40),
-                    Expanded(
-                        child: Text(
-                      "OR",
-                      style:
-                          GoogleFonts.roboto(color: Colors.black, fontSize: 14),
-                    )),
-                    Expanded(
-                      child: Divider(
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 10, left: 10, bottom: 20),
-                  child: Text(
-                    "Tax",
-                    style:
-                        GoogleFonts.roboto(color: Colors.black, fontSize: 16),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 14),
-                  child: Column(
-                    children: <Widget>[
-                      Container(
-                        width: 280,
-                        height: 60,
-                        padding: EdgeInsets.only(left: 16, right: 0),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey, width: 1),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('tax')
-                              .snapshots(),
-                          builder: (BuildContext context,
-                              AsyncSnapshot<QuerySnapshot> snapshot) {
-                            if (snapshot.hasError) {
-                              return Text('Error: ${snapshot.error}');
-                            }
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Center(child: CircularProgressIndicator());
-                            }
-                            List<TaxModel> unitItems = [];
-                            snapshot.data?.docs.forEach((doc) {
-                              String docId = doc.id;
-                              String title = doc['amount'];
-                              unitItems.add(TaxModel(docId, title));
-                            });
-
-                            return DropdownButton<TaxModel>(
-                              iconSize: 40,
-                              isExpanded: true,
-                              underline: SizedBox(),
-                              hint: Text('Select Tax'),
-                              value: selectedTax,
-                              items: unitItems.map((unit) {
-                                return DropdownMenuItem<TaxModel>(
-                                  value: unit,
-                                  child: Text(unit.t_amount),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedTax = value;
-                                  setvalue = value;
-                                  selectedTaxText = (selectedTax != null)
-                                      ? selectedTax!.t_amount
-                                      : "0";
-                                  print(
-                                      'The selected unit ID is ${selectedTax?.t_id}');
-                                  print('The selected unit ID1 is $setvalue');
-                                  print(
-                                      'The selected unit title is ${selectedTax?.t_amount}');
-                                  // Perform further operations with the selected unit
-                                });
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        height: 10.0,
-                      ),
-                      Text(
-                        selected5,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20.0,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(
-                  height: 20,
-                ),
-                // ignore: deprecated_member_use
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Container(
-                    height: 45.0,
-                    width: 320.0,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.blue),
-                    child: InkWell(
-                      onTap: () {
-                        if (_formKeytax.currentState!.validate()) {
-                          setState(() {
-                            labletax = labletaxController.text;
-                            amounttaxText = amountTexttaxController.text;
-                          });
-                          Navigator.of(context).pop();
-                          addButtonPressedTax();
-                          calculateGrandTotalwithTax();
-                        } else {
-                          Navigator.of(context).pop();
-                          calculateGrandTotalwithTax();
-                        }
-                      },
-                      child: Center(
-                        child: Text(
-                          'Add',
-                          style: TextStyle(
-                            fontSize: 20.0,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 20.0,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget showExtraDialog() {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.0),
-      ),
-      child: SingleChildScrollView(
-        child: Container(
-          height: 450,
-          width: 320,
-          decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(20)),
-          child: Form(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.only(left: 30, top: 30),
-                  child: Text(
-                    "Add Extra Charges",
-                    style: GoogleFonts.roboto(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20),
-                  ),
-                ),
-                SizedBox(
-                  height: 40,
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 10,
-                  ),
-                  child: Text(
-                    "Charge Title",
-                    style:
-                        GoogleFonts.roboto(color: Colors.black, fontSize: 16),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(14.0),
-                  child: TextFormField(
-                    decoration: InputDecoration(
-                      hintText: 'Title',
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey, width: 1),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 10,
-                  ),
-                  child: Text(
-                    "Charge Amount",
-                    style:
-                        GoogleFonts.roboto(color: Colors.black, fontSize: 16),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(14.0),
-                  child: TextFormField(
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: 'Amount',
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey, width: 1),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                  ),
-                ),
-
-                SizedBox(
-                  height: 20,
-                ),
-                // ignore: deprecated_member_use
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Container(
-                    height: 45.0,
-                    width: 320.0,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.blue),
-                    child: InkWell(
-                      onTap: () {},
-                      child: Center(
-                        child: Text(
-                          'Add',
-                          style: TextStyle(
-                            fontSize: 20.0,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 20.0,
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -2747,8 +2911,9 @@ class SupplierModel {
 class ProductModel {
   String p_id;
   String p_name;
+  double p_grandTotal;
 
-  ProductModel(this.p_id, this.p_name);
+  ProductModel(this.p_id, this.p_name, this.p_grandTotal);
 
   @override
   bool operator ==(Object other) =>

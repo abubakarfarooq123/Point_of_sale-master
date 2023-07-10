@@ -56,7 +56,7 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
       'state':state,
       'zipcode': zipcode,
       'country': country,
-      'cost': '',
+      'cost': '0',
     })
         .then((value) => print('User Added'))
         .catchError((error) => print('Failed to add user: $error'));

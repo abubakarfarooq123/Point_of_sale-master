@@ -1,10 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/home/drawer.dart';
 import 'package:pos/staff/add_customers.dart';
-import 'package:pos/staff/add_suppliers.dart';
 import 'package:pos/user/edit_profile.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -22,6 +22,12 @@ class Add_Sales extends StatefulWidget {
 }
 
 class _Add_SalesState extends State<Add_Sales> {
+
+  void initState() {
+    super.initState();
+  _purchasedateController.text =
+  DateFormat('dd/MM/yyyy').format(DateTime.now());
+}
   List<String> amount = ['Amount', 'Percentage'];
   String selected = '';
   var setvalue;
@@ -40,9 +46,18 @@ class _Add_SalesState extends State<Add_Sales> {
   List<String> tax = ['Tax Of cargo( 10% )', 'For Shipping( 20% )'];
   String selected5 = '';
   var setvalue5;
-  TextEditingController _date = TextEditingController();
-  TextEditingController _due_date = TextEditingController();
+  TextEditingController _purchasedateController = TextEditingController();
+  TextEditingController _due_dateController = TextEditingController();
+
   TextEditingController _expiry_date = TextEditingController();
+  int currentPurchaseCount = 0;
+  void dispose() {
+    _purchasedateController.dispose();
+    _due_dateController.dispose();
+    super.dispose();
+  }
+
+  CustomerModel? selectedCustomer;
 
   @override
   Widget build(BuildContext context) {
@@ -161,13 +176,21 @@ class _Add_SalesState extends State<Add_Sales> {
                   ),
                   Padding(
                     padding: const EdgeInsets.all(14.0),
-                    child: TextFormField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        hintText: '#',
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey, width: 1),
-                          borderRadius: BorderRadius.circular(15),
+                    child: Container(
+                      height: 60,
+                      width: MediaQuery.of(context).size.width / 1.1,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black54, width: 1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 15, top: 15),
+                        child: Text(
+                          (currentPurchaseCount + 1).toString(),
+                          style: GoogleFonts.roboto(
+                              color: Colors.black,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -206,27 +229,35 @@ class _Add_SalesState extends State<Add_Sales> {
                         child: Padding(
                           padding: const EdgeInsets.all(14.0),
                           child: TextFormField(
-                            controller: _date,
+                            readOnly: true,
                             decoration: InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.grey, width: 1),
-                                borderRadius: BorderRadius.circular(15),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
-                            onTap: () async {
-                              DateTime? pickeddate = await showDatePicker(
+                            controller: _purchasedateController,
+                            onTap: () {
+                              showDatePicker(
                                 context: context,
-                                initialDate: DateTime.now(),
+                                initialDate: _purchasedateController
+                                    .text.isEmpty
+                                    ? DateTime
+                                    .now() // Use current date if the field is empty
+                                    : DateFormat('dd/MM/yyyy').parse(
+                                    _purchasedateController
+                                        .text), // Parse existing value
                                 firstDate: DateTime(2000),
-                                lastDate: DateTime(2101),
-                              );
-                              if (pickeddate != null) {
-                                setState(() {
-                                  _date.text = DateFormat('yyyy-MM-dd')
-                                      .format(pickeddate);
-                                });
-                              }
+                                lastDate: DateTime(2100),
+                              ).then((date) {
+                                if (date != null) {
+                                  setState(() {
+                                    final formattedDate =
+                                    DateFormat('dd/MM/yyyy').format(date);
+                                    _purchasedateController.text =
+                                        formattedDate;
+                                  });
+                                }
+                              });
                             },
                           ),
                         ),
@@ -235,27 +266,27 @@ class _Add_SalesState extends State<Add_Sales> {
                         child: Padding(
                           padding: const EdgeInsets.all(14.0),
                           child: TextFormField(
-                            controller: _due_date,
+                            readOnly: true, // Prevents keyboard from appearing
                             decoration: InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.grey, width: 1),
-                                borderRadius: BorderRadius.circular(15),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
-                            onTap: () async {
-                              DateTime? pickdate = await showDatePicker(
+                            controller: _due_dateController,
+                            onTap: () {
+                              showDatePicker(
                                 context: context,
                                 initialDate: DateTime.now(),
                                 firstDate: DateTime(2000),
-                                lastDate: DateTime(2101),
-                              );
-                              if (pickdate != null) {
-                                setState(() {
-                                  _due_date.text =
-                                      DateFormat('yyyy-MM-dd').format(pickdate);
-                                });
-                              }
+                                lastDate: DateTime(2100),
+                              ).then((date) {
+                                if (date != null) {
+                                  setState(() {
+                                    final formattedDate = DateFormat('dd/MM/yyyy').format(date);
+                                    _due_dateController.text = formattedDate;
+                                  });
+                                }
+                              });
                             },
                           ),
                         ),
@@ -286,34 +317,49 @@ class _Add_SalesState extends State<Add_Sales> {
                                     border: Border.all(
                                         color: Colors.grey, width: 1),
                                     borderRadius: BorderRadius.circular(15)),
-                                child: DropdownButton(
-                                  hint: Padding(
-                                    padding: const EdgeInsets.only(
-                                        top: 10, left: 35),
-                                    child: Text(
-                                      'Please Choose Customer',
-                                      style: TextStyle(
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ),
-                                  isExpanded: true,
-                                  icon: Visibility(
-                                      visible: false,
-                                      child: Icon(Icons.arrow_downward)),
-                                  underline: SizedBox(),
-                                  value: setvalue1,
-                                  onChanged: (newValue) {
-                                    setState(() {
-                                      setvalue1 = newValue;
+                                child: StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('customer')
+                                      .snapshots(),
+                                  builder: (BuildContext context,
+                                      AsyncSnapshot<QuerySnapshot> snapshot) {
+                                    if (snapshot.hasError) {
+                                      return Text('Error: ${snapshot.error}');
+                                    }
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return Center(child: CircularProgressIndicator());
+                                    }
+                                    List<CustomerModel> discountItems = [];
+                                    snapshot.data?.docs.forEach((doc) {
+                                      String docId = doc.id;
+                                      String name = doc['name'];
+                                      discountItems.add(CustomerModel(docId, name));
                                     });
-                                  },
-                                  items: supplier.map((String value) {
-                                    return new DropdownMenuItem<String>(
-                                      value: value,
-                                      child: new Text(value),
+                                    return DropdownButton<CustomerModel>(
+                                      iconSize: 40,
+                                      isExpanded: true,
+                                      underline: SizedBox(),
+                                      hint: Text("Select Customer"),
+                                      value: selectedCustomer,
+                                      items: discountItems.map((customer) {
+                                        return DropdownMenuItem<CustomerModel>(
+                                          value: customer,
+                                          child: Text(customer.c_name),
+                                        );
+                                      }).toList(),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          selectedCustomer = value;
+                                          setvalue = value;
+                                         print('The selected unit ID is ${selectedCustomer?.c_id}');
+                                          print('The selected unit ID1 is $setvalue');
+                                          print('The selected unit title is ${selectedCustomer?.c_name}');
+                                          // Perform further operations with the selected unit
+                                        });
+                                      },
                                     );
-                                  }).toList(),
+                                  },
                                 ),
                               ),
                               SizedBox(
@@ -2554,4 +2600,20 @@ class _Add_SalesState extends State<Add_Sales> {
       ),
     );
   }
+}
+class CustomerModel {
+  String c_id;
+  String c_name;
+
+  CustomerModel(this.c_id, this.c_name);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is CustomerModel &&
+              runtimeType == other.runtimeType &&
+              c_id == other.c_id;
+
+  @override
+  int get hashCode => c_id.hashCode;
 }
