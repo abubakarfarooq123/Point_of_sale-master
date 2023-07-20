@@ -30,7 +30,6 @@ class _PurchaseState extends State<Purchase> {
     return snapshot.docs;
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,207 +108,203 @@ class _PurchaseState extends State<Purchase> {
             List<DocumentSnapshot> data = snapshot.data!;
             return SingleChildScrollView(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(
-                              left: 14, top: 20, bottom: 14),
-                          child: Container(
-                            height: 50,
-                            width: 230,
-                            child: TextField(
-                              decoration: InputDecoration(
-                                focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(40),
-                                    borderSide:
-                                        BorderSide(color: Colors.black)),
-                                enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(40),
-                                    borderSide:
-                                        BorderSide(color: Colors.black)),
-                                prefixIcon: Icon(
-                                  Icons.search_outlined,
-                                  color: Colors.grey,
-                                ),
-                                hintText: "Search...",
-                                hintStyle: TextStyle(color: Colors.grey),
-                              ),
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(left: 14, top: 20, bottom: 14),
+                      child: Container(
+                        height: 50,
+                        width: 230,
+                        child: TextField(
+                          decoration: InputDecoration(
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(40),
+                                borderSide: BorderSide(color: Colors.black)),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(40),
+                                borderSide: BorderSide(color: Colors.black)),
+                            prefixIcon: Icon(
+                              Icons.search_outlined,
+                              color: Colors.grey,
                             ),
+                            hintText: "Search...",
+                            hintStyle: TextStyle(color: Colors.grey),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 10,
-                          ),
-                          child: InkWell(
-                            child: Container(
-                              height: 40,
-                              width: 40,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                  color: Colors.blue),
-                              child: Icon(
-                                FontAwesomeIcons.filePdf,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 10,
-                          ),
-                          child: InkWell(
-                            child: Container(
-                              height: 40,
-                              width: 40,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                  color: Colors.blue),
-                              child: Icon(
-                                FontAwesomeIcons.fileCsv,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-
-                        columnSpacing: 45,
-                        headingRowColor: MaterialStateColor.resolveWith(
-                          (states) {
-                            return Colors.blue;
-                          },
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 10,
+                      ),
+                      child: InkWell(
+                        child: Container(
+                          height: 40,
+                          width: 40,
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30),
+                              color: Colors.blue),
+                          child: Icon(
+                            FontAwesomeIcons.filePdf,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
-                        // border: TableBorder(
-                        //   borderRadius: BorderRadius.circular(20),
-                        // ),
-                        dividerThickness: 3,
-                        showBottomBorder: true,
-                        columns: [
-                          DataColumn(
-                            label: Text(
-                              'Purchase #',
-                              style: GoogleFonts.roboto(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white),
-                            ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 10,
+                      ),
+                      child: InkWell(
+                        child: Container(
+                          height: 40,
+                          width: 40,
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30),
+                              color: Colors.blue),
+                          child: Icon(
+                            FontAwesomeIcons.fileCsv,
+                            color: Colors.white,
+                            size: 18,
                           ),
-                          DataColumn(
-                            label: Text(
-                              'Date',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Supplier',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Items',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Sub Totals',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Discounts',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Tax',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Grand Total',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Due Date',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                        rows: data.map((document) {
-                          Map<String, dynamic> employeeData =
-                          document.data() as Map<String, dynamic>;
-                          String purchase = employeeData['purchase'].toString();
-                          String date = employeeData['pickdate'];
-                          String supplier = employeeData['supplier'];
-                          String item = employeeData['count'].toString();
-                          String subtotal = employeeData['subtotal'].toString();
-                          String discount = employeeData['discount'].toString();
-                          String tax = employeeData['tax'].toString();
-                          String grandtotal = employeeData['grand'].toString();
-                          String duedate = employeeData['duedate'];
-                          return DataRow(
-                            cells: [
-                              DataCell(Text(
-                                "PUR# ${purchase}",
-                                style: GoogleFonts.poppins(),
-                              )),
-                              DataCell(Text(date)),
-                              DataCell(Text(supplier)),
-                              DataCell(Text(item)),
-                              DataCell(Text(subtotal)),
-                              DataCell(Text(discount)),
-                              DataCell(Text(tax)),
-                              DataCell(Text(grandtotal)),
-                              DataCell(Text(duedate)),
-                            ],
-                          );
-                        }).toList(),
+                        ),
                       ),
                     ),
                   ],
-                ));
+                ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columnSpacing: 45,
+                    headingRowColor: MaterialStateColor.resolveWith(
+                      (states) {
+                        return Colors.blue;
+                      },
+                    ),
+                    // border: TableBorder(
+                    //   borderRadius: BorderRadius.circular(20),
+                    // ),
+                    dividerThickness: 3,
+                    showBottomBorder: true,
+                    columns: [
+                      DataColumn(
+                        label: Text(
+                          'Purchase #',
+                          style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Date',
+                          style: GoogleFonts.roboto(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Supplier',
+                          style: GoogleFonts.roboto(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Items',
+                          style: GoogleFonts.roboto(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Sub Totals',
+                          style: GoogleFonts.roboto(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Discounts',
+                          style: GoogleFonts.roboto(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Tax',
+                          style: GoogleFonts.roboto(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Grand Total',
+                          style: GoogleFonts.roboto(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Due Date',
+                          style: GoogleFonts.roboto(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                    rows: data.map((document) {
+                      Map<String, dynamic> employeeData =
+                          document.data() as Map<String, dynamic>;
+                      String purchase = employeeData['purchase'].toString();
+                      String date = employeeData['pickdate'];
+                      String supplier = employeeData['supplier'];
+                      String item = employeeData['count'].toString();
+                      String subtotal = employeeData['subtotal'].toString();
+                      String discount = employeeData['discount'].toString();
+                      String tax = employeeData['tax'].toString();
+                      String grandtotal = employeeData['grand'].toString();
+                      String duedate = employeeData['duedate'];
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(
+                            "PUR# ${purchase}",
+                            style: GoogleFonts.poppins(),
+                          )),
+                          DataCell(Text(date)),
+                          DataCell(Text(supplier)),
+                          DataCell(Text(item)),
+                          DataCell(Text(subtotal)),
+                          DataCell(Text(discount)),
+                          DataCell(Text(tax)),
+                          DataCell(Text(grandtotal)),
+                          DataCell(Text(duedate)),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ));
           }
         },
       ),

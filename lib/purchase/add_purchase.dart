@@ -182,104 +182,19 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
   double? taxValue;
   double globalGrandTotal = 0.0;
-  //
-  // void calculateGrandTotal() {
-  //   print("subtotala sh ags $previoussubtotal");
-  //   // if (selectedDiscount  == 0) {
-  //   //   grandTotal = previoussubtotal; // Store the original subtotal
-  //   // }
-  //   if (selectedDiscount != null) {
-  //     double? discAmount = double.tryParse(selectedDiscount!.d_amount);
-  //     if (discAmount != null) {
-  //       if (discAmount < 1) {
-  //         // Discount amount is a percentage (e.g., 0.6)
-  //         double discountPercentage = discAmount;
-  //         double discountValue = previoussubtotal * discountPercentage;
-  //         double rateWithTax = double.tryParse(_ratesController.text)! * discountPercentage;
-  //         _ratesController.text = rateWithTax.toStringAsFixed(2);
-  //         print("new new new rats ${_ratesController.text}");
-  //         print("Discount value: $discountValue");
-  //         double discountSubtotal = previoussubtotal - discountValue;
-  //         print("Discounted Subtotal: $discountSubtotal");
-  //         grandTotal = discountSubtotal;
-  //         disc = grandTotal;
-  //         globalGrandTotal = grandTotal;
-  //       } else {
-  //         // Discount amount is a fixed amount (e.g., 50)
-  //         double discountSubtotal = previoussubtotal - discAmount;
-  //         print("Discounted Subtotal: $discountSubtotal");
-  //         grandTotal = discountSubtotal;
-  //         disc = grandTotal;
-  //         globalGrandTotal = grandTotal;
-  //         double rateWithTax = double.tryParse(_ratesController.text)! + discAmount ;
-  //         _ratesController.text = rateWithTax.toStringAsFixed(2);
-  //       }
-  //     } else {
-  //       grandTotal = previoussubtotal;
-  //       print("No Discount Subtotal: ${grandTotal.toString()}");
-  //       disc = grandTotal;
-  //       globalGrandTotal = grandTotal;
-  //     }
-  //   }
-  //   // if (selectedProducts.length > 1) {
-  //   //   globalGrandTotal += grandTotal;
-  //   // }
-  //   // else{
-  //   //   globalGrandTotal = grandTotal;
-  //   // }
-  // }
+
 
   double taxgrand = 0.0;
 
-  // void calculateGrandTotalwithTax() {
-  //   if (selectedTax != null) {
-  //     double? taxAmount = double.tryParse(selectedTax!.t_amount);
-  //     if (taxAmount != null) {
-  //       if (taxAmount < 1) {
-  //         // Tax amount is a percentage (e.g., 0.6)
-  //         double taxPercentage = taxAmount;
-  //         taxValue =
-  //             (selectedDiscount != null ? globalGrandTotal : grandTotal) *
-  //                 taxPercentage;
-  //
-  //         double rateWithTax = double.tryParse(_ratesController.text)! / taxPercentage!;
-  //         _ratesController.text = rateWithTax.toStringAsFixed(2);
-  //         print("Tax value rates controller: ${_ratesController.text}");
-  //         print("Tax value: $taxValue");
-  //         taxAdd = (selectedDiscount != null ? globalGrandTotal : grandTotal) +
-  //             taxValue!;
-  //         print("Discounted Grand Total with Tax: ${taxAdd.toString()}");
-  //         grandTotal = taxAdd!;
-  //         disc = grandTotal;
-  //       } else {
-  //         double discountAdd =
-  //             (selectedDiscount != null ? globalGrandTotal : grandTotal) +
-  //                 taxAmount;
-  //         print(
-  //             "Grand Total without Percentage discount add: ${discountAdd.toString()}");
-  //         // print("Grand Total without Percentage: ${grandTotal.toString()}");
-  //
-  //         grandTotal = discountAdd;
-  //
-  //         print(
-  //             "Grand Total without Percentage abaghagsjgs s: ${grandTotal.toString()}");
-  //
-  //         disc = grandTotal;
-  //       }
-  //     }
-  //     else {
-  //       grandTotal = selectedProducts.length > 1 ? combosubtotal : subtotal;
-  //       print("No Tax Sub Total: ${grandTotal.toString()}");
-  //       disc = grandTotal;
-  //       print("Tax Grand Total: $disc");
-  //     }
-  //   }
-  // }
+
 
   double discountForSecondProduct = 0.0;
 
   double extraForSecondProduct = 0.0;
 
+  double taxForSecondProduct = 0.0;
+
+  double nothingForSecondProduct = 0.0;
   void newlastgrand() {
     print("new last grand global: $globalGrandTotal");
     print("new last grand Tax Global: $taxgrand");
@@ -311,9 +226,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     }
   }
 
-  double taxForSecondProduct = 0.0;
-
-  double nothingForSecondProduct = 0.0;
 
   void newlastgranddiscount() {
     print("new last grand discount Global Discount: $globalGrandTotal");
@@ -376,13 +288,22 @@ class _Add_PurchaseState extends State<Add_Purchase> {
         print("Grand total Entered ${enteredValue}");
         print("Great Grand total Entered ${grandTotal}");
 
-        if (disc == 0) {
-          disc = subtotal - enteredValue;
+        if (selectedDiscount != null && selectedTax != null) {
+          taxgrand -= enteredValue;
+          print("tax last grand $taxgrand");
+        } else if (selectedProducts.length > 1 && selectedTax == null) {
+          taxgrand -= enteredValue;
+          print("tax last aaa grand $taxgrand");
+        } else if (selectedDiscount != null) {
+          globalGrandTotal -= enteredValue;
+          print("tax last global grand $globalGrandTotal");
+        } else if (selectedTax != null) {
+          taxgrand -= enteredValue;
+          print("tax last aaaaa grandta  at a $taxgrand");
         } else {
-          disc = disc - enteredValue;
+          grandTotal -= enteredValue;
+          print("tax last grandaaaaaaa aaaa $grandTotal");
         }
-
-        print("Grand Null Display is $displaybalancedue");
       }
     });
   }
@@ -2208,8 +2129,12 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                                                   Navigator.of(
                                                                           context)
                                                                       .pop();
-                                                                  newlastgranddiscount();
-                                                                  newlastgrand();
+                                                                  if(selectedTax !=null){
+                                                                    newlastgrand();
+                                                                  }
+                                                                  if(selectedDiscount !=null){
+                                                                    newlastgranddiscount();
+                                                                  }
                                                                   calculatedextragrandtotal();
                                                                   newextralastgrand();
                                                                   setState(() {
@@ -2385,6 +2310,15 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                             ),
                           ),
                         ),
+                        DataColumn(
+                          label: Text(
+                            'Remove',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ],
                       rows: tableData.map((data) {
                         return DataRow(
@@ -2417,16 +2351,16 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                 data['Grandtotal'].toString(),
                               ),
                             ),
-                            // DataCell(
-                            //   IconButton(
-                            //     icon: Icon(Icons.clear),
-                            //     onPressed: () {
-                            //       setState(() {
-                            //         isTableVisible = !isTableVisible;
-                            //       });
-                            //     },
-                            //   ),
-                            // ),
+                            DataCell(
+                              IconButton(
+                                icon: Icon(Icons.clear),
+                                onPressed: () {
+                                  setState(() {
+                                    tableData.remove(data);  // Remove the row from the data list
+                                  });
+                                },
+                              ),
+                            ),
                           ],
                         );
                       }).toList(),
@@ -2665,7 +2599,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           child: Padding(
                         padding: const EdgeInsets.only(left: 50, top: 10),
                         child: Text(
-                          "${displaybalancedue.toString()}",
+                          "Rs. ${(selectedDiscount != null && selectedTax != null) ? taxgrand.toString() : (selectedProducts.length > 1 && selectedTax == null) ? taxgrand.toString() : selectedDiscount != null ? globalGrandTotal.toString() : selectedTax != null ? taxgrand.toString() : grandTotal.toString()}",
                           style: GoogleFonts.roboto(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
@@ -2703,7 +2637,10 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           child: Padding(
                         padding: const EdgeInsets.only(left: 50, top: 10),
                         child: Text(
-                          "${disc.toString()}",
+                          'Rs. ${
+                              (extragrand != null && extragrand > 0)
+                                  ? extragrand.toString() :
+                              (selectedDiscount != null && selectedTax != null) ? taxgrand.toString() : (selectedProducts.length > 1 && selectedTax == null) ? taxgrand.toString() : selectedDiscount != null ? globalGrandTotal.toString() : selectedTax != null ? taxgrand.toString() : grandTotal.toString()}',
                           style: GoogleFonts.roboto(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,

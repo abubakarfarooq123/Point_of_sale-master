@@ -65,10 +65,12 @@ class _Add_CustomerState extends State<Add_Customer> {
   }
 
   add() async {
-    await FirebaseFirestore.instance
-        .collection('customer')
-        .doc()
-        .set({
+    DocumentReference docRef =
+    FirebaseFirestore.instance.collection('customer').doc();
+    var brandId = docRef.id;
+
+    await docRef.set({
+    'id': brandId,
           'name': name,
           'email': email,
           'phone': phone,

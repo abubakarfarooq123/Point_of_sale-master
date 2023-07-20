@@ -24,6 +24,38 @@ class Brand extends StatefulWidget {
 
 class _BrandState extends State<Brand> {
 
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<Object?> getValuesFromFirebase() async {
+    DocumentSnapshot snapshot = await _firestore
+        .collection('brand')
+        .doc(FirebaseAuth.instance.currentUser?.uid)
+        .get();
+    if (snapshot.exists) {
+      return snapshot.data();
+    }
+    return {}; // Default empty map if the document doesn't exist
+  }
+
+  bool isisRowSelected = false;
+  int selectedRowIndex = -1; // Track the index of the selected row
+
+  var title = "";
+  final titleController = TextEditingController();
+
+  void initState() {
+    super.initState();
+    // Call a function to listen for new customer additions
+    getValuesFromFirebase().then((values) {
+      setState(() {
+        Map<String, dynamic> data = values as Map<String, dynamic>;
+        titleController.text = data['title'] ?? '';
+      });
+    });
+  }
+
+
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   Future<List<DocumentSnapshot>> fetchEmployeeData() async {
     QuerySnapshot snapshot = await firestore.collection('brand').get();
@@ -97,132 +129,195 @@ class _BrandState extends State<Brand> {
         ],
       ),
       drawer: MyDrawer(),
-      body: FutureBuilder<List<DocumentSnapshot>>(
-        future: fetchEmployeeData(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
-          } else {
-            List<DocumentSnapshot> data = snapshot.data!;
-            return Column(
-              children: [
-                Row(
+      body: SingleChildScrollView(
+        child: FutureBuilder<List<DocumentSnapshot>>(
+          future: fetchEmployeeData(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            } else {
+              List<DocumentSnapshot> data = snapshot.data!;
+              return SingleChildScrollView(
+                child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                          left: 14, top: 20, bottom: 14),
-                      child: Container(
-                        height: 50,
-                        width: 230,
-                        child: TextField(
-                          decoration: InputDecoration(
-                            focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(40),
-                                borderSide:
-                                BorderSide(color: Colors.black)),
-                            enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(40),
-                                borderSide:
-                                BorderSide(color: Colors.black)),
-                            prefixIcon: Icon(
-                              Icons.search_outlined,
-                              color: Colors.grey,
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(
+                                left: 14, top: 20, bottom: 14),
+                            child: Container(
+                              height: 50,
+                              width: 230,
+                              child: TextField(
+                                decoration: InputDecoration(
+                                  focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(40),
+                                      borderSide:
+                                      BorderSide(color: Colors.black)),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(40),
+                                      borderSide:
+                                      BorderSide(color: Colors.black)),
+                                  prefixIcon: Icon(
+                                    Icons.search_outlined,
+                                    color: Colors.grey,
+                                  ),
+                                  hintText: "Search...",
+                                  hintStyle: TextStyle(color: Colors.grey),
+                                ),
+                              ),
                             ),
-                            hintText: "Search...",
-                            hintStyle: TextStyle(color: Colors.grey),
                           ),
-                        ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10),
+                            child: InkWell(
+                              onTap: () {
+                                showEditProfileDialog(context, data[selectedRowIndex]);
+                              },
+                              child: Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  color: selectedRowIndex != -1 ? Colors.green : Colors.grey.withOpacity(0.5),
+                                ),
+                                child: Icon(
+                                  FontAwesomeIcons.edit,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10),
+                            child: InkWell(
+                              onTap: () {
+                                showDeleteConfirmationDialog(context, data, selectedRowIndex);
+                              },
+                              child: Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  color: selectedRowIndex != -1 ? Colors.red : Colors.grey.withOpacity(0.5),
+                                ),
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10),
+                            child: InkWell(
+                              child: Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  color: selectedRowIndex != -1 ? Colors.blue : Colors.grey.withOpacity(0.5),
+                                ),
+                                child: Icon(
+                                  FontAwesomeIcons.filePdf,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10, right: 10),
+                            child: InkWell(
+                              child: Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  color: selectedRowIndex != -1 ? Colors.blue : Colors.grey.withOpacity(0.5),
+                                ),
+                                child: Icon(
+                                  FontAwesomeIcons.fileCsv,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 10,
-                      ),
-                      child: InkWell(
-                        child: Container(
-                          height: 40,
-                          width: 40,
-                          decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              color: Colors.blue),
-                          child: Icon(
-                            FontAwesomeIcons.filePdf,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
+                    SizedBox(
+                      height: 30,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 10,
-                      ),
-                      child: InkWell(
-                        child: Container(
-                          height: 40,
-                          width: 40,
-                          decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              color: Colors.blue),
-                          child: Icon(
-                            FontAwesomeIcons.fileCsv,
-                            color: Colors.white,
-                            size: 18,
+                    SingleChildScrollView(
+                     scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columnSpacing: 70,
+                        headingRowColor: MaterialStateColor.resolveWith((states) {
+                          return Colors.blue;
+                        },),
+                        dividerThickness: 3,
+                        showBottomBorder: true,
+                        columns: [
+                          DataColumn(
+                            label: Text('Title', style: GoogleFonts.roboto(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white
+                            ),
+                            ),
                           ),
-                        ),
+                          DataColumn(
+                            label: Text('No. of Items', style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            ),
+                          ),
+                        ],
+                        rows: List<DataRow>.generate(data.length, (index) {
+                          Map<String, dynamic> employeeData =
+                          data[index].data() as Map<String, dynamic>;
+                          String title = employeeData['title'];
+                          String item = employeeData['item'];
+                          return DataRow.byIndex(
+                            index: index,
+                            selected: selectedRowIndex == index,
+                            onSelectChanged: (selected) {
+                              setState(() {
+                                if (selected!) {
+                                  selectedRowIndex = index;
+                                } else {
+                                  selectedRowIndex = -1;
+                                }
+                              });
+                            },   cells: [
+                              DataCell(Text(title,style: GoogleFonts.poppins(
+                              ),)),
+                              DataCell(Text(item)),
+                            ],
+                          );
+                        }),
+                        dataRowColor: MaterialStateColor.resolveWith((states) {
+                          if (states.contains(MaterialState.selected)) {
+                            return Colors.grey.withOpacity(0.5);
+                          }
+                          return Colors.transparent;
+                        }),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(
-                  height: 30,
-                ),
-                DataTable(
-                  columnSpacing: MediaQuery.of(context).size.width/3.6,
-                  headingRowColor: MaterialStateColor.resolveWith((states) {
-                    return Colors.blue;
-                  },),
-                  // border: TableBorder(
-                  //   borderRadius: BorderRadius.circular(20),
-                  // ),
-                  dividerThickness: 3,
-                  showBottomBorder: true,
-                  columns: [
-                    DataColumn(
-                      label: Text('Title', style: GoogleFonts.roboto(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white
-                      ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Text('No. of Items', style: GoogleFonts.roboto(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      ),
-                    ),
-                  ],
-                  rows: data.map((document) {
-                    Map<String, dynamic> employeeData =
-                    document.data() as Map<String, dynamic>;
-                    String title = employeeData['title'];
-                    String item = employeeData['item'];
-                    return DataRow(
-                      cells: [
-                        DataCell(Text(title,style: GoogleFonts.poppins(
-                        ),)),
-                        DataCell(Text(item)),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ],
-            );
-          }
-        },
+              );
+            }
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: (){
@@ -235,6 +330,145 @@ class _BrandState extends State<Brand> {
         backgroundColor: Colors.blue,
         child: Icon(Icons.add,color: Colors.white,),
       ),
+    );
+  }
+  void showDeleteConfirmationDialog(BuildContext context, List<dynamic> data, int selectedRowIndex) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Confirmation'),
+          content: Text('Are you sure you want to delete?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Perform cancel action
+                Navigator.of(context).pop(false);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: selectedRowIndex != -1
+                  ? () {
+                // Perform the action for the delete button
+                Map<String, dynamic> selectedEmployeeData =
+                data[selectedRowIndex].data() as Map<String, dynamic>;
+                String selectedEmployeeId = selectedEmployeeData['id'];
+
+                // Delete the selected row data from Firebase
+                firestore.collection('brand').doc(selectedEmployeeId).delete().then((value) {
+                  // Row data deleted successfully
+                  setState(() {
+                    data.removeAt(selectedRowIndex); // Remove the selected row from the local data list
+                    selectedRowIndex = -1; // Reset the selected row index
+                  });
+
+                  // Close the dialog
+                  Navigator.of(context).pop();
+                }).catchError((error) {
+                  // Error occurred while deleting row data
+                  print('Error deleting row data: $error');
+                });
+              }
+                  : null,
+              child: Text('Delete'),
+            ),
+
+          ],
+        );
+      },
+    );
+  }
+  void showEditProfileDialog(BuildContext context, dynamic customerData) {
+
+
+    void _updateSelectedValues() {
+      String title1 = titleController.text;
+
+
+      Map<String, dynamic> data = {
+        'title': title1,
+
+      };
+
+      FirebaseFirestore.instance
+          .collection('brand')
+          .doc(customerData['id'])
+          .update(data);
+    }
+
+    titleController.text = customerData['title'] ?? '';
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        // Implement your edit profile dialog here
+        return SingleChildScrollView(
+          child: AlertDialog(
+            title: Text('Edit Brand'),
+            content: Column(
+              children: [
+                new Form(
+                  child: Column(
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.all(18.0),
+                        child: TextFormField(
+                          decoration: InputDecoration(
+                            hintText: 'Name',
+                            enabledBorder: OutlineInputBorder(
+                              borderSide:
+                              BorderSide(color: Colors.grey, width: 1),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          controller: titleController,
+                          onChanged: (value) => title = value,
+
+                        ),
+                      ),
+                      SizedBox(
+                        height: 20,
+                      ),
+                      // ignore: deprecated_member_use
+                      Container(
+                        height: 45.0,
+                        width: 320.0,
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.blue),
+                        child: InkWell(
+                          onTap: () {
+                            _updateSelectedValues();
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => Brand(),
+                              ),
+                            );
+                          },
+                          child: Center(
+                            child: Text(
+                              'Add',
+                              style: TextStyle(
+                                fontSize: 20.0,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 20.0,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
