@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../splashScreens/loginout.dart';
 
+
 enum MenuItem {
   item1,
   item2,
@@ -60,12 +61,12 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
   int currentPurchaseCount = 0;
 
-  add() async {
+  add()  {
     DocumentReference docRef =
         FirebaseFirestore.instance.collection('Purchase').doc();
     var brandId = docRef.id;
 
-    await docRef.set({
+     docRef.set({
       'id': brandId,
       'item': selectedProduct!.p_name,
       'count': selectedItemCount,
@@ -91,7 +92,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     setState(() {
       currentPurchaseCount++;
     });
-    await FirebaseFirestore.instance
+     FirebaseFirestore.instance
         .collection('Purchase')
         .doc(brandId)
         .update({'purchase': currentPurchaseCount});
@@ -350,6 +351,14 @@ class _Add_PurchaseState extends State<Add_Purchase> {
   TextEditingController amountPaidController = TextEditingController();
   String? balanceDue = "";
 
+  String? validateDropdown(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please select a warehouse';
+    }
+    return null;
+  }
+
+
   @override
   void dispose() {
     lableController.dispose();
@@ -541,28 +550,50 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       String currentValue = snapshot.data()!['previous'];
 
       print("CurrentValue $currentValue");
-
       double enteredAmount = double.parse(currentValue);
       if (enteredAmount != null) {
-        double incrementedValue = enteredAmount + displaybalancedue;
-        print("incrementedValue $incrementedValue");
-        String updatedValue = incrementedValue.toString();
+        if (amountPaidController.text != null &&
+            amountPaidController.text.isNotEmpty) {
+          double incrementedValue = enteredAmount +
+              ((selectedDiscount != null && selectedTax != null) ?
+              taxgrand : (selectedProducts.length > 1 && selectedTax == null) ?
+              taxgrand : selectedDiscount != null
+                  ? globalGrandTotal
+                  : selectedTax != null ? taxgrand :
+              grandTotal);
+          print("incrementedValue $incrementedValue");
+          String updatedValue = incrementedValue.toString();
 
-        // Now you can use the updatedValue as needed
-        await FirebaseFirestore.instance
-            .collection('supplier')
-            .doc(itemId)
-            .update({'previous': updatedValue});
-      } else {
-        print("Failed to parse the current value as an integer");
+          // Now you can use the updatedValue as needed
+          await FirebaseFirestore.instance
+              .collection('supplier')
+              .doc(itemId)
+              .update({'previous': updatedValue});
+          print("incrementedValue $incrementedValue");
+
+        }
+        else {
+          double incrementedValue = enteredAmount +
+              ((selectedDiscount != null && selectedTax != null) ?
+              taxgrand : (selectedProducts.length > 1 && selectedTax == null) ?
+              taxgrand : selectedDiscount != null
+                  ? globalGrandTotal
+                  : selectedTax != null ? taxgrand :
+              grandTotal);
+          print("incrementedValue $incrementedValue");
+          String updatedValue = incrementedValue.toString();
+
+          // Now you can use the updatedValue as needed
+          await FirebaseFirestore.instance
+              .collection('supplier')
+              .doc(itemId)
+              .update({'previous': updatedValue});
+          print("incrementedValue $incrementedValue");
+
+        }
       }
-
-      // int incrementedValue = int.parse(currentValue) + 1;
-      //
-      // print("incrementedValue $incrementedValue");
-
-      print('Item value incremented successfully.');
-    } catch (error) {
+    }
+    catch (error) {
       print('Error incrementing item value: $error');
     }
   }
@@ -1071,7 +1102,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                             String title = doc['item'];
                             unitItems.add(CategoryModel(docId, title));
                           });
-
                           return DropdownButton<CategoryModel>(
                             iconSize: 40,
                             isExpanded: true,
@@ -1099,7 +1129,9 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                   validationError = 'Please select a warehouse';
                                 }
                               });
+
                             },
+
                           );
                         },
                       ),
@@ -2563,7 +2595,8 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                 borderRadius: BorderRadius.circular(15),
                               ),
                             ),
-                            onChanged: (value) {
+                            onFieldSubmitted:
+                                (value) {
                               assignGrandTotal();
                             },
                           ),
@@ -2760,27 +2793,55 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                             height: 45.0,
                             width: 320.0,
                             decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                color: Colors.blue),
+                              borderRadius: BorderRadius.circular(20),
+                              color: Colors.blue,
+                            ),
                             child: InkWell(
                               onTap: () {
                                 if (formKey.currentState!.validate()) {
-                                  setState(() {
-                                    pickdate = _purchasedateController.text;
-                                    duedate = _due_dateController.text;
-                                  });
+                                  if (selectedProduct == null) {
+                                    // Display error message for missing item selection
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Please select an Item first."),
+                                        duration: Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.fixed,
+                                      ),
+                                    );
+                                  } else if (selectedCategory == null) {
+                                    // Display error message for missing category selection
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Please select a Warehouse."),
+                                        duration: Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.fixed,
+                                       ),
+                                    );
+                                  } else if (selectedSupplier == null) {
+                                    // Display error message for missing warehouse selection
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Please select a Supplier."),
+                                        duration: Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.fixed,
+                                      ),
+                                    );
+                                  } else {
+                                    // All selections are made, proceed with the add() function
+                                    setState(() {
+                                      pickdate = _purchasedateController.text;
+                                      duedate = _due_dateController.text;
+                                    });
+                                    add();
+                                    _updateSelectedValues(selectedProduct!.p_id);
+                                    increaseItemByOne(selectedProduct!.p_id);
+                                    increaseItemByOnebalance(selectedSupplier!.s_id);
+                                    increaseItemByOneamount(selectedSupplier!.s_id);
+                                    increaseItemByOnesupplier(selectedSupplier!.s_id);
+                                    increaseItemByOnewarehouse(selectedCategory!.c_id);
+                                    print(" it is $currentPurchaseCount");
+                                  }
                                 }
-                                add();
-                                _updateSelectedValues(selectedProduct!.p_id);
-                                increaseItemByOne(selectedProduct!.p_id);
-                                increaseItemByOnebalance(
-                                    selectedSupplier!.s_id);
-                                increaseItemByOneamount(selectedSupplier!.s_id);
-                                increaseItemByOnesupplier(
-                                    selectedSupplier!.s_id);
-                                increaseItemByOnewarehouse(
-                                    selectedCategory!.c_id);
-                                print(" it is $currentPurchaseCount");
                               },
                               child: Center(
                                 child: Text(
@@ -2796,6 +2857,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           ),
                         ),
                       ),
+
                     ],
                   ),
                   SizedBox(

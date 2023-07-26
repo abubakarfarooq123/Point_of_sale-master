@@ -338,12 +338,7 @@ class _Add_CustomerState extends State<Add_Customer> {
                           ),
                         ),
                         controller: addressController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Address';
-                          }
-                          return null;
-                        }),
+                       ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(18.0),
@@ -392,12 +387,7 @@ class _Add_CustomerState extends State<Add_Customer> {
                           ),
                         ),
                         controller: stateController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter State';
-                          }
-                          return null;
-                        }),
+                       ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(18.0),
@@ -419,13 +409,7 @@ class _Add_CustomerState extends State<Add_Customer> {
                             color: Colors.blue,
                           ),
                         ),
-                        controller: zipcodeController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter ZipCode';
-                          }
-                          return null;
-                        }),
+                       ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(18.0),
@@ -447,12 +431,7 @@ class _Add_CustomerState extends State<Add_Customer> {
                           ),
                         ),
                         controller: countryController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Country';
-                          }
-                          return null;
-                        }),
+                       ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(18.0),
@@ -475,12 +454,7 @@ class _Add_CustomerState extends State<Add_Customer> {
                           ),
                         ),
                         controller: previous_balanceController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Balance';
-                          }
-                          return null;
-                        }),
+                       ),
                   ),
                   SizedBox(
                     height: 20,

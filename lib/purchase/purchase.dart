@@ -186,9 +186,6 @@ class _PurchaseState extends State<Purchase> {
                         return Colors.blue;
                       },
                     ),
-                    // border: TableBorder(
-                    //   borderRadius: BorderRadius.circular(20),
-                    // ),
                     dividerThickness: 3,
                     showBottomBorder: true,
                     columns: [

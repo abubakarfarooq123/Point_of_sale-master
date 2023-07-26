@@ -3,32 +3,28 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pos/home/drawer.dart';
-import 'package:pos/items/brand/add_brand.dart';
-import 'package:pos/items/discount/add_discount.dart';
-import 'package:pos/user/edit_profile.dart';
+import 'package:pos/cylinder/type/add_cylinder_type.dart';
 
+import '../../home/drawer.dart';
 import '../../splashScreens/loginout.dart';
-
+import '../../user/edit_profile.dart';
 enum MenuItem {
   item1,
   item2,
 }
-
-class Discount extends StatefulWidget {
-  const Discount({Key? key}) : super(key: key);
+class Cylinder_Type extends StatefulWidget {
+  const Cylinder_Type({super.key});
 
   @override
-  State<Discount> createState() => _DiscountState();
+  State<Cylinder_Type> createState() => _Cylinder_TypeState();
 }
 
-class _DiscountState extends State<Discount> {
-
+class _Cylinder_TypeState extends State<Cylinder_Type> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<Object?> getValuesFromFirebase() async {
     DocumentSnapshot snapshot = await _firestore
-        .collection('Discount')
+        .collection('cylinder_type')
         .doc(FirebaseAuth.instance.currentUser?.uid)
         .get();
     if (snapshot.exists) {
@@ -60,9 +56,12 @@ class _DiscountState extends State<Discount> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   Future<List<DocumentSnapshot>> fetchEmployeeData() async {
-    QuerySnapshot snapshot = await firestore.collection('Discount').get();
+    QuerySnapshot snapshot = await firestore.collection('cylinder_type').get();
     return snapshot.docs;
   }
+
+  @override
+
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +70,7 @@ class _DiscountState extends State<Discount> {
         backgroundColor: Colors.white,
         centerTitle: true,
         title: Text(
-          "Discount",
+          "Cylinder Type",
           style: GoogleFonts.roboto(
             color: Colors.black,
             fontSize: 25,
@@ -90,7 +89,7 @@ class _DiscountState extends State<Discount> {
                 Navigator.pushReplacement(context,
                     MaterialPageRoute(builder: (context) => LoginOut()));
 
-                (route) => false;
+                    (route) => false;
               }
             },
             itemBuilder: (context) => [
@@ -105,7 +104,7 @@ class _DiscountState extends State<Discount> {
                     Text(
                       "Edit Profile",
                       style:
-                          GoogleFonts.roboto(color: Colors.black, fontSize: 16),
+                      GoogleFonts.roboto(color: Colors.black, fontSize: 16),
                     ),
                   ],
                 ),
@@ -121,7 +120,7 @@ class _DiscountState extends State<Discount> {
                     Text(
                       "Logout",
                       style:
-                          GoogleFonts.roboto(color: Colors.black, fontSize: 16),
+                      GoogleFonts.roboto(color: Colors.black, fontSize: 16),
                     ),
                   ],
                 ),
@@ -130,7 +129,6 @@ class _DiscountState extends State<Discount> {
           ),
         ],
       ),
-      drawer: MyDrawer(),
       body: SingleChildScrollView(
         child: FutureBuilder<List<DocumentSnapshot>>(
           future: fetchEmployeeData(),
@@ -256,9 +254,9 @@ class _DiscountState extends State<Discount> {
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
-                        columnSpacing: 80,
+                        columnSpacing: 180,
                         headingRowColor: MaterialStateColor.resolveWith(
-                          (states) {
+                              (states) {
                             return Colors.blue;
                           },
                         ),
@@ -281,22 +279,12 @@ class _DiscountState extends State<Discount> {
                               ),
                             ),
                           ),
-                          DataColumn(
-                            label: Text(
-                              'Type',
-                              style: GoogleFonts.roboto(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
                         ],
                         rows: List<DataRow>.generate(data.length, (index) {
                           Map<String, dynamic> employeeData =
                           data[index].data() as Map<String, dynamic>;
                           String lable = employeeData['lable'];
                           String amount2 = employeeData['amount'];
-                          String type1 = employeeData['type'];
                           return DataRow.byIndex(
                             index: index,
                             selected: selectedRowIndex == index,
@@ -318,10 +306,6 @@ class _DiscountState extends State<Discount> {
                                 amount2.toString(),
                                 style: GoogleFonts.poppins(),
                               )),
-                              DataCell(Text(
-                                type1 ?? '',
-                                style: GoogleFonts.poppins(),
-                              )),
                             ],
                           );
                         }),
@@ -340,11 +324,12 @@ class _DiscountState extends State<Discount> {
             }
           },
         ),
-      ),
+        ),
+      drawer: MyDrawer(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (context) => Add_discount()));
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => Add_Cylinder_Type()));
         },
         backgroundColor: Colors.blue,
         child: Icon(
@@ -354,7 +339,6 @@ class _DiscountState extends State<Discount> {
       ),
     );
   }
-
   void showDeleteConfirmationDialog(BuildContext context, List<dynamic> data, int selectedRowIndex) {
     showDialog(
       context: context,
@@ -379,7 +363,7 @@ class _DiscountState extends State<Discount> {
                 String selectedEmployeeId = selectedEmployeeData['id'];
 
                 // Delete the selected row data from Firebase
-                firestore.collection('Discount').doc(selectedEmployeeId).delete().then((value) {
+                firestore.collection('cylinder_type').doc(selectedEmployeeId).delete().then((value) {
                   // Row data deleted successfully
                   setState(() {
                     data.removeAt(selectedRowIndex); // Remove the selected row from the local data list
@@ -417,7 +401,7 @@ class _DiscountState extends State<Discount> {
       };
 
       FirebaseFirestore.instance
-          .collection('Discount')
+          .collection('cylinder_type')
           .doc(customerData['id'])
           .update(data);
     }
@@ -431,7 +415,7 @@ class _DiscountState extends State<Discount> {
         // Implement your edit profile dialog here
         return SingleChildScrollView(
           child: AlertDialog(
-            title: Text('Edit Discount'),
+            title: Text('Edit Cylinder'),
             content: Column(
               children: [
                 new Form(
@@ -486,13 +470,13 @@ class _DiscountState extends State<Discount> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => Discount(),
+                                builder: (context) => Cylinder_Type(),
                               ),
                             );
                           },
                           child: Center(
                             child: Text(
-                              'Add',
+                              'Update',
                               style: TextStyle(
                                 fontSize: 20.0,
                                 color: Colors.white,
@@ -515,4 +499,5 @@ class _DiscountState extends State<Discount> {
       },
     );
   }
+
 }

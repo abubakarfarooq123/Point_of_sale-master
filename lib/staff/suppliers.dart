@@ -112,27 +112,51 @@ class _SuppliersState extends State<Suppliers> {
 
   @override
 
-  void listenForNewCustomers() {
+  void listenForNewCustomers() async {
+    // Get the initial list of documents
+    var initialSnapshot = await firestore.collection('supplier').get();
+    activeCustomerCount = initialSnapshot.docs.length;
+
+    // Save the initial snapshot document IDs to compare with new snapshots
+    List<String> previousSnapshotIds = initialSnapshot.docs.map((doc) => doc.id).toList();
+
     firestore.collection('supplier').snapshots().listen((snapshot) {
-      // Update the active customer count when a new customer is added
+      // Get the current list of documents
+      List<DocumentSnapshot> currentSnapshot = snapshot.docs;
+
+      // Calculate the deleted supplier count
+      int deletedCount = 0;
+      for (var id in previousSnapshotIds) {
+        if (!currentSnapshot.any((doc) => doc.id == id)) {
+          deletedCount++;
+        }
+      }
+
+      // Update the deleted supplier count and active customer count
       setState(() {
-        activeCustomerCount = snapshot.docs.length;
+        deletedCustomerCount = deletedCount;
+        activeCustomerCount = currentSnapshot.length;
       });
+
+      // Update the previous snapshot document IDs for the next iteration
+      previousSnapshotIds = currentSnapshot.map((doc) => doc.id).toList();
     });
   }
 
-  void deleteCustomer(String customerId) {
-    firestore.collection('supplier').doc(customerId).delete().then((value) {
-      // Customer deleted successfully, reduce the active customer count by 1
-      setState(() {
-        activeCustomerCount--;
-        deletedCustomerCount++;
-      });
-    }).catchError((error) {
-      // Handle any errors that occur during deletion
-      print('Error deleting customer: $error');
-    });
-  }
+
+  //
+  // void deleteCustomer(String customerId) {
+  //   firestore.collection('supplier').doc(customerId).delete().then((value) {
+  //     // Customer deleted successfully, reduce the active customer count by 1
+  //     setState(() {
+  //       activeCustomerCount--;
+  //       deletedCustomerCount++;
+  //     });
+  //   }).catchError((error) {
+  //     // Handle any errors that occur during deletion
+  //     print('Error deleting customer: $error');
+  //   });
+  // }
 
   double duesAmount = 0.0;
 

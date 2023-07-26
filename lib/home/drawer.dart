@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_icons/flutter_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:pos/corn_store/corn_store.dart';
+import 'package:pos/cylinder/cylinder_.dart';
+import 'package:pos/cylinder/type/cylinder_type.dart';
 import 'package:pos/home/home_screen.dart';
 import 'package:pos/items/brand/brand.dart';
 import 'package:pos/items/category.dart';
@@ -214,6 +218,53 @@ class _MyDrawerState extends State<MyDrawer> {
                           builder: (context) => Purchase()));
 
                 },
+              ),
+              ListTile(
+                title: Text("Corn Store", style: GoogleFonts.roboto(
+                  color: Colors.black,
+                ),
+                ),
+                leading: Icon(FontAwesomeIcons.store),
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => Corn_Store()));
+                },
+              ),
+              ExpansionTile(
+                title: Text(
+                  "Cylinder",
+                  style: GoogleFonts.roboto(
+                    color: Colors.black,
+                  ),
+                ),
+                leading: Icon(FontAwesomeIcons.cube, size: 28,),
+                children: [
+                  ListTile(
+                    title: Text("Cylinder", style: GoogleFonts.roboto(
+                      color: Colors.black,
+                    ),
+                    ),
+                    leading: Icon(FontAwesomeIcons.cubesStacked),
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (BuildContext context) => Cylinder()));
+                    },
+                  ),
+                  ListTile(
+                    title: Text("Cylinder Type", style: GoogleFonts.roboto(
+                      color: Colors.black,
+                    ),
+                    ),
+                    leading: Icon(FontAwesome.cubes),
+
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (BuildContext context) => Cylinder_Type()));
+                    },
+                  ),
+                ],
               ),
               ExpansionTile(
                 title: Text(

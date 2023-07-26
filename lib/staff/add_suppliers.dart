@@ -305,12 +305,7 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
                         ),
                       ),
                         controller: addressController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Address';
-                          }
-                          return null;
-                        }
+
                     ),
                   ),
                   Padding(
@@ -332,12 +327,7 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
                         ),
                       ),
                         controller: cityController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter City';
-                          }
-                          return null;
-                        }
+
                     ),
                   ),
                   Padding(
@@ -359,12 +349,7 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
                         ),
                       ),
                         controller: stateController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter State';
-                          }
-                          return null;
-                        }
+
                     ),
                   ),
                   Padding(
@@ -387,12 +372,7 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
                         ),
                       ),
                         controller: zipcodeController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter ZipCode';
-                          }
-                          return null;
-                        }
+
                     ),
                   ),
                   Padding(
@@ -414,13 +394,7 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
                         ),
                       ),
                         controller: countryController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Country';
-                          }
-                          return null;
-                        }
-                    ),
+                                           ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(18.0),
@@ -492,12 +466,7 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
                         ),
                       ),
                         controller: commentController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Comment';
-                          }
-                          return null;
-                        }
+
                     ),
                   ),
 
