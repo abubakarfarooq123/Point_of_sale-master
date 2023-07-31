@@ -159,7 +159,7 @@ class _Corn_StoreState extends State<Corn_Store> {
                             padding: const EdgeInsets.only(left: 10),
                             child: InkWell(
                               onTap: () {
-                                // showDeleteConfirmationDialog(context, data, selectedRowIndex);
+                                showDeleteConfirmationDialog(context, data, selectedRowIndex);
                               },
                               child: Container(
                                 height: 40,
@@ -390,12 +390,12 @@ class _Corn_StoreState extends State<Corn_Store> {
                               DataCell(Text(item !=null ? item : '' )),
                               DataCell(Text(kg !=null ? kg  : '' )),
                               DataCell(Text(bags !=null ? bags : ''  )),
-                              DataCell(Text(previous !=null ? previous : ''  )),
+                              DataCell(Text(previous !=null ? previous : '0.0'  )),
                               DataCell(Text(cost !=null ? cost : '' )),
                               DataCell(Text(grandtotal !=null ? grandtotal : '' )),
                               DataCell(Text(paid !=null ? paid : '' )),
-                              DataCell(Text(after !=null ? after : ''  )),
-                              DataCell(Text(remaining !=null ? remaining : ' ')),
+                              DataCell(Text(after !=null ? after : '0.0'  )),
+                              DataCell(Text(remaining !=null ? remaining : '0.0')),
                               DataCell(Text(duedate !=null ? duedate  : '' )),
                             ],
                           );
@@ -426,4 +426,52 @@ class _Corn_StoreState extends State<Corn_Store> {
       ),
     );
   }
+  void showDeleteConfirmationDialog(BuildContext context, List<dynamic> data, int selectedRowIndex) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Confirmation'),
+          content: Text('Are you sure you want to delete?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Perform cancel action
+                Navigator.of(context).pop(false);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: selectedRowIndex != -1
+                  ? () {
+                // Perform the action for the delete button
+                Map<String, dynamic> selectedEmployeeData =
+                data[selectedRowIndex].data() as Map<String, dynamic>;
+                String selectedEmployeeId = selectedEmployeeData['id'];
+
+                // Delete the selected row data from Firebase
+                firestore.collection('Corn').doc(selectedEmployeeId).delete().then((value) {
+                  // Row data deleted successfully
+                  setState(() {
+                    data.removeAt(selectedRowIndex); // Remove the selected row from the local data list
+                    selectedRowIndex = -1; // Reset the selected row index
+                  });
+
+                  // Close the dialog
+                  Navigator.of(context).pop();
+                }).catchError((error) {
+                  // Error occurred while deleting row data
+                  print('Error deleting row data: $error');
+                });
+              }
+                  : null,
+              child: Text('Delete'),
+            ),
+
+          ],
+        );
+      },
+    );
+  }
+
 }

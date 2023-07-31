@@ -699,6 +699,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
   double lastRate = 0.0;
   int quantity = 0;
   double rate = 0.0;
+
   void savePurchase(String itemID) {
     quantity = int.tryParse(_quantityController.text) ?? 0;
     rate = double.tryParse(_ratesController.text) ?? 0.0;
@@ -2240,7 +2241,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                             );
                                           });
                                         })
-                                      ..then((value) {
+                                      .then((value) {
                                         // Reset the text field value when the dialog is closed
                                         resetTextField();
                                       });
@@ -2249,7 +2250,8 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                               },
                             );
                           },
-                        )),
+                        ),
+                    ),
                   ),
                   SizedBox(
                     height: 20,

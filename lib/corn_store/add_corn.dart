@@ -188,10 +188,19 @@ String bag="";
 
 
     String previousBalanceString = await getPreviousBalanceForCustomer(customerId);
-   double previousBalance = double.parse(previousBalanceString);
-    double valueToSubtract = lastvalue != 0  ? lastvalue : _result;
-    double incrementedValue = previousBalance - valueToSubtract;
+    double previousBalance = 0.0; // Default value if previousBalanceString is empty
 
+    if (previousBalanceString.isNotEmpty) {
+      previousBalance = double.parse(previousBalanceString);
+    }
+
+    double valueToSubtract = lastvalue != 0  ? lastvalue : _result;
+    double incrementedValue;
+    if (previousBalance != 0.0) {
+      incrementedValue = previousBalance - valueToSubtract;
+    } else {
+      incrementedValue = valueToSubtract;
+    }
 
     print("incrementedValue $incrementedValue");
     String updatedValue = incrementedValue.toString();
@@ -306,15 +315,6 @@ String bag="";
     });
   }
 
-  // String calculateBagsAndKilograms(double totalQuantity) {
-  //   int bags = totalQuantity ~/ 50; // Calculate the number of bags (integer division)
-  //   double remainingKilograms = totalQuantity % 50; // Calculate the remaining kilograms
-  //   String bagss = "$bags bag";
-  //   if (remainingKilograms > 0) {
-  //     bagss += " and $remainingKilograms Kilograms";
-  //   }
-  //   return bagss;
-  // }
 
 
 
@@ -1019,6 +1019,12 @@ String bag="";
                           borderRadius: BorderRadius.circular(20.0),
                         ),
                       ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please Enter Number';
+                          }
+                          return null;
+                        }
                     ),
                   ),
                   Padding(
@@ -1059,6 +1065,12 @@ String bag="";
                           borderRadius: BorderRadius.circular(20.0),
                         ),
                       ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please Enter Number ';
+                          }
+                          return null;
+                        },
                       onFieldSubmitted:
                           (value) {
                         assignGrandTotal();

@@ -32,12 +32,11 @@ class _Add_Cylinder_TypeState extends State<Add_Cylinder_Type> {
     DocumentReference docRef = FirebaseFirestore.instance.collection('cylinder_type').doc();
     var UnitId = docRef.id;
 
-    String lableWithKG = '$lable KG'; // Concatenate "KG" to the label
 
     docRef.set({
       'id': UnitId,
       'amount': finalAmount.toString(),
-      'lable': lableWithKG, // Save the lable with "KG"
+      'lable': lable, // Save the lable with "KG"
     });
     setState(() {
       amountText = '';
