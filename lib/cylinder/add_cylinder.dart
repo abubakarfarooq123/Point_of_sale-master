@@ -525,6 +525,42 @@ class _Add_CylinderState extends State<Add_Cylinder> {
   TextEditingController amounttotoPaidController = TextEditingController();
   TextEditingController quantityController = TextEditingController();
 
+
+  Future<void> increaseItemByOneamount1(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('empty_cylinder')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['quantity'];
+
+      print("CurrentValue $currentValue");
+
+      int enteredAmount = int.parse(currentValue);
+      int quantity11 = int.parse(quantityController.text);
+      if (enteredAmount != null) {
+        int valueToSubtract = quantity11;
+        int incrementedValue = enteredAmount - valueToSubtract;
+
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+
+        await FirebaseFirestore.instance
+            .collection('empty_cylinder')
+            .doc(itemId)
+            .update({'quantity': updatedValue});
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -919,7 +955,7 @@ class _Add_CylinderState extends State<Add_Cylinder> {
                       ),
                       child: StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
-                            .collection('cylinder_type')
+                            .collection('empty_cylinder')
                             .snapshots(),
                         builder: (BuildContext context,
                             AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -933,10 +969,15 @@ class _Add_CylinderState extends State<Add_Cylinder> {
                           List<CylinderModel> unitItems = [];
                           snapshot.data?.docs.forEach((doc) {
                             String docId = doc.id;
-                            String title = doc['lable'];
-                            double amount = double.parse(
-                                doc['amount']); // Convert string to double
-                            unitItems.add(CylinderModel(docId, title, amount));
+                            String title = doc['cylinder'];
+                            String weightString = doc['weight'].toString();
+                            String quantityString = doc['quantity'].toString();
+
+                            // Convert the strings to double and int, respectively
+                            double amount = double.parse(weightString);
+                            int quantityty = int.parse(quantityString);
+
+                            unitItems.add(CylinderModel(docId, title, amount,quantityty));
                           });
                           return DropdownButton<CylinderModel>(
                             iconSize: 40,
@@ -1087,6 +1128,9 @@ class _Add_CylinderState extends State<Add_Cylinder> {
                                                                           20.0),
                                                             ),
                                                           ),
+                                                          onFieldSubmitted: (value){
+                                                            increaseItemByOneamount1(selectedCylinder!.cy_id);
+                                                          },
                                                           validator: (value) {
                                                             if (value == null ||
                                                                 value.isEmpty) {
@@ -1976,8 +2020,9 @@ class CylinderModel {
   String cy_id;
   String cy_title;
   double amount;
+  int quantity;
 
-  CylinderModel(this.cy_id, this.cy_title, this.amount);
+  CylinderModel(this.cy_id, this.cy_title, this.amount,this.quantity);
 
   @override
   bool operator ==(Object other) =>
