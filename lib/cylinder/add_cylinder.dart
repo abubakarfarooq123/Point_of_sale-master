@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -231,6 +232,27 @@ class _Add_CylinderState extends State<Add_Cylinder> {
   }
 
 
+
+  Future<Map<String, int>> getEmptyCylinderDetails() async {
+    final querySnapshot = await FirebaseFirestore.instance.collection('empty_cylinder').get();
+
+    final itemQuantityMap = Map<String, int>();
+
+    for (final doc in querySnapshot.docs) {
+      final item = doc['cylinder'] as String;
+      final nestedQuantity = doc['quantity'] as int;
+
+      if (itemQuantityMap.containsKey(item)) {
+        itemQuantityMap[item] = itemQuantityMap[item]! + nestedQuantity;
+      } else {
+        itemQuantityMap[item] = nestedQuantity;
+      }
+    }
+
+    return itemQuantityMap;
+  }
+
+
   double rateWithextra = 0.0;
 
   double extragrand = 0.0;
@@ -291,6 +313,8 @@ class _Add_CylinderState extends State<Add_Cylinder> {
       ),
     );
   }
+
+  Map<String, int> aggregatedQuantities = {};
 
   void saveDataToFirestore(List<Map<String, dynamic>> data, String brandId) async {
     DocumentReference cylinderDocRef = FirebaseFirestore.instance.collection('cylinder').doc(brandId);
@@ -374,6 +398,7 @@ class _Add_CylinderState extends State<Add_Cylinder> {
     }
 
   }
+  double amount111=0.0;
   double extraForSecondProduct = 0.0;
   double extraValueForSecondProduct=0.0;
 
@@ -943,8 +968,7 @@ class _Add_CylinderState extends State<Add_Cylinder> {
                     ),
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsets.only(left: 10, top: 10, bottom: 20),
+                    padding: const EdgeInsets.only(left: 10, top: 10, bottom: 20),
                     child: Container(
                       width: 330,
                       height: 60,
@@ -954,31 +978,40 @@ class _Add_CylinderState extends State<Add_Cylinder> {
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('empty_cylinder')
-                            .snapshots(),
-                        builder: (BuildContext context,
-                            AsyncSnapshot<QuerySnapshot> snapshot) {
+                        stream: FirebaseFirestore.instance.collection('empty_cylinder').snapshots(),
+                        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
                           if (snapshot.hasError) {
                             return Text('Error: ${snapshot.error}');
                           }
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
                             return Center(child: CircularProgressIndicator());
                           }
+
                           List<CylinderModel> unitItems = [];
+                          Map<String, List<dynamic>> aggregatedData = {}; // New map for aggregated data
+
                           snapshot.data?.docs.forEach((doc) {
                             String docId = doc.id;
                             String title = doc['cylinder'];
-                            String weightString = doc['weight'].toString();
                             String quantityString = doc['quantity'].toString();
+                            int quantity = int.parse(quantityString);
+                            double amount = double.parse(doc['weight'].toString()); // Retrieve the amount value
 
-                            // Convert the strings to double and int, respectively
-                            double amount = double.parse(weightString);
-                            int quantityty = int.parse(quantityString);
-
-                            unitItems.add(CylinderModel(docId, title, amount,quantityty));
+                            if (aggregatedData.containsKey(title)) {
+                              aggregatedData[title]![0] += quantity; // Accumulate quantity
+                              aggregatedData[title]![1] = amount; // Store the amount as double
+                              aggregatedData[title]![2] = docId; // Store the docId
+                            } else {
+                              aggregatedData[title] = [quantity, amount, docId]; // Include docId
+                            }
                           });
+
+// Create a CylinderModel list with aggregated data
+                          aggregatedData.forEach((title, data) {
+                            String docId = data[2] as String; // Retrieve the stored docId as a String
+                            unitItems.add(CylinderModel(docId, title, data[1] as double, data[0])); // Add the docId and amount value
+                          });
+
                           return DropdownButton<CylinderModel>(
                             iconSize: 40,
                             isExpanded: true,
@@ -988,7 +1021,7 @@ class _Add_CylinderState extends State<Add_Cylinder> {
                             items: unitItems.map((unit) {
                               return DropdownMenuItem<CylinderModel>(
                                 value: unit,
-                                child: Text(unit.cy_title),
+                                child: Text('${unit.cy_title} - Quantity: ${unit.quantity}'),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -1105,39 +1138,46 @@ class _Add_CylinderState extends State<Add_Cylinder> {
                                                       ),
                                                     ),
                                                     Padding(
-                                                      padding: EdgeInsets.only(
-                                                          left: 8,
-                                                          right: 8,
-                                                          top: 18,
-                                                          bottom: 18),
+                                                      padding: EdgeInsets.only(left: 8, right: 8, top: 18, bottom: 18),
                                                       child: TextFormField(
-                                                          controller:
-                                                              quantityController,
-                                                          keyboardType:
-                                                              TextInputType
-                                                                  .number,
-                                                          decoration:
-                                                              InputDecoration(
-                                                            labelText:
-                                                                "Enter Quantity",
-                                                            border:
-                                                                OutlineInputBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          20.0),
-                                                            ),
+                                                        controller: quantityController,
+                                                        keyboardType: TextInputType.number,
+                                                        decoration: InputDecoration(
+                                                          labelText: "Enter Quantity",
+                                                          border: OutlineInputBorder(
+                                                            borderRadius: BorderRadius.circular(20.0),
                                                           ),
-                                                          onFieldSubmitted: (value){
-                                                            increaseItemByOneamount1(selectedCylinder!.cy_id);
-                                                          },
-                                                          validator: (value) {
-                                                            if (value == null ||
-                                                                value.isEmpty) {
-                                                              return 'Please Enter Quantity';
+                                                        ),
+                                                        onFieldSubmitted: (value) {
+                                                          increaseItemByOneamount1(selectedCylinder!.cy_id);
+                                                        },
+                                                        validator: (value) {
+                                                          if (value == null || value.isEmpty) {
+                                                            return 'Please Enter Quantity';
+                                                          }
+                                                          return null;
+                                                        },
+                                                        // Add input formatters to enforce the restriction
+                                                        inputFormatters: [
+                                                          FilteringTextInputFormatter.allow(RegExp(r'^\d+')),
+                                                          TextInputFormatter.withFunction((oldValue, newValue) {
+                                                            // Convert the newValue to an integer, and get the available quantity
+                                                            int enteredQuantity = int.tryParse(newValue.text) ?? 0;
+                                                            int availableQuantity = selectedCylinder!.quantity;
+
+                                                            // If the entered quantity is greater than the available quantity,
+                                                            // return the oldValue (the previous valid value).
+                                                            if (enteredQuantity > availableQuantity) {
+                                                              return oldValue;
                                                             }
-                                                            return null;
+
+                                                            // Otherwise, allow the newValue (the entered valid value).
+                                                            return newValue;
                                                           }),
+                                                          LengthLimitingTextInputFormatter(3),
+                                                        ],
+
+                                                      ),
                                                     ),
                                                     Padding(
                                                       padding:
@@ -2193,3 +2233,29 @@ class CylinderModel {
 //     )),
 //   ],
 // ),
+
+
+
+
+
+
+
+
+
+
+
+
+
+// List<CylinderModel> unitItems = [];
+// snapshot.data?.docs.forEach((doc) {
+//   String docId = doc.id;
+//   String title = doc['cylinder'];
+//   String weightString = doc['weight'].toString();
+//   String quantityString = doc['quantity'].toString();
+//
+//   // Convert the strings to double and int, respectively
+//   double amount = double.parse(weightString);
+//   int quantityty = int.parse(quantityString);
+//
+//   unitItems.add(CylinderModel(docId, title, amount,quantityty));
+// });

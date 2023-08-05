@@ -26,21 +26,57 @@ class _Add_Cylinder_TypeState extends State<Add_Cylinder_Type> {
   String amountText = '';
 
   @override
-  void addButtonPressed() {
+  void addButtonPressed() async {
     double finalAmount = double.parse(amountText);
 
+    // Convert the entered label to lowercase
+    String lowercaseLabel = lable.toLowerCase();
+    print('Lowercase Label: $lowercaseLabel');
+
+    // Check if the label already exists in the 'cylinder_type' collection
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('cylinder_type')
+        .where('lable', isEqualTo: lowercaseLabel)
+        .get();
+    print('Snapshot Size: ${snapshot.docs.length}');
+
+    if (snapshot.docs.isNotEmpty) {
+      // If the label already exists, show an error and return
+      showDialog(
+        context: context,
+        builder: (context) {
+          print('Showing AlertDialog');
+          return AlertDialog(
+            title: Text('Error'),
+            content: Text('Label already exists. Please enter a different label.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    // If the label doesn't exist, add the new entry to the collection
     DocumentReference docRef = FirebaseFirestore.instance.collection('cylinder_type').doc();
     var UnitId = docRef.id;
-
 
     docRef.set({
       'id': UnitId,
       'amount': finalAmount.toString(),
-      'lable': lable, // Save the lable with "KG"
+      'lable': lowercaseLabel, // Save the lowercase label with "KG"
     });
+
     setState(() {
       amountText = '';
     });
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -48,6 +84,9 @@ class _Add_Cylinder_TypeState extends State<Add_Cylinder_Type> {
       ),
     );
   }
+
+
+
   @override
 
   void dispose() {

@@ -223,8 +223,9 @@ class _Empty_CylindersState extends State<Empty_Cylinders> {
                         ],
                       ),
                     ),
+
                     SizedBox(
-                      height: 30,
+                      height: 20,
                     ),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,

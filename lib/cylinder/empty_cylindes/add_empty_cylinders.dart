@@ -176,10 +176,7 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
     setState(() {
       currentPurchaseCount++;
     });
-    FirebaseFirestore.instance
-        .collection('empty_cylinder')
-        .doc(brandId)
-        .update({'purchase': currentPurchaseCount});
+    FirebaseFirestore.instance.collection('empty_cylinder').doc(brandId).update({'purchase': currentPurchaseCount});
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -212,7 +209,6 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
 
     print('Current purchase count: $currentPurchaseCount');
   }
-
   double grandTotal=0.0;
 
 
@@ -1553,3 +1549,11 @@ class CylinderModel {
   @override
   int get hashCode => cy_id.hashCode;
 }
+
+
+
+
+
+
+
+

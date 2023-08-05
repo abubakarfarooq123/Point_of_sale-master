@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pos/corn_store/corn_store.dart';
 import 'package:pos/cylinder/cylinder_.dart';
 import 'package:pos/cylinder/empty_cylindes/empty_cylinder.dart';
+import 'package:pos/cylinder/stock_info_cylinders.dart';
 import 'package:pos/cylinder/type/cylinder_type.dart';
 import 'package:pos/home/home_screen.dart';
 import 'package:pos/items/brand/brand.dart';
@@ -274,6 +275,17 @@ class _MyDrawerState extends State<MyDrawer> {
                     onTap: () {
                       Navigator.of(context).push(MaterialPageRoute(
                           builder: (BuildContext context) => Cylinder()));
+                    },
+                  ),
+                  ListTile(
+                    title: Text("Cylinder Stock", style: GoogleFonts.roboto(
+                      color: Colors.black,
+                    ),
+                    ),
+                    leading: Icon(FontAwesomeIcons.warehouse),
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (BuildContext context) => Stock_Info_Cylinder()));
                     },
                   ),
                 ],
