@@ -7,7 +7,6 @@ import 'package:pos/sales/add_sales.dart';
 import 'package:pos/user/edit_profile.dart';
 
 import '../splashScreens/loginout.dart';
-import 'add_quotation.dart';
 
 enum MenuItem{
   item1,

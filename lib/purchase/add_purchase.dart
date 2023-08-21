@@ -38,6 +38,56 @@ class _Add_PurchaseState extends State<Add_Purchase> {
         DateFormat('dd/MM/yyyy').format(DateTime.now());
   }
 
+
+
+
+  void saveDataAndResetFields(BuildContext context) {
+    amounts =
+        _extraamountController
+            .text;
+
+    Map<String, dynamic> newData = {
+      'Item': selectedProduct!.p_name,
+    'Quantity':
+    _quantityController
+        .text,
+    'Rate': _ratesController
+        .text,
+    'Subtotal':
+    previoussubtotal,
+    'Discount': (selectedProducts.length > 1 &&
+    selectedDiscount == null)
+    ? '0'
+        : "${selectedDiscountText}${selectedDiscount != null && double.parse(selectedDiscount!.d_amount) < 1 ? '%' : ''}",
+    'Tax': (selectedProducts.length > 1 &&
+    selectedTax == null)
+    ? '0'
+        : "${selectedTaxText}${selectedTax != null && double.parse(selectedTax!.t_amount) < 1 ? '%' : ''}",
+    'Amount': (selectedProducts.length > 1 &&
+    (_extraamountController.text == null ||  _extraamountController.text.isEmpty))
+    ? '0'
+        : amounts.toString(),
+    'Grandtotal':
+    (selectedProducts.length > 1 &&
+    _extraamountController.text.isEmpty) ? extraValueForSecondProduct :
+    (selectedProducts.length > 1 &&
+    selectedTax ==
+    null)
+    ? discountForSecondProduct
+        .toString()
+        : (selectedProducts.length > 1 && selectedDiscount == null)
+    ? taxForSecondProduct.toString()
+        : grandTotal.toString(),
+    };
+
+    setState(() {
+      tableData.add(newData);
+    });
+    resetTextField();
+    print(newData);
+  }
+
+
   Widget? tableWidget;
 
   String selectedProductUnit = '';
@@ -70,7 +120,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       'id': brandId,
       'item': selectedProduct!.p_name,
       'count': selectedItemCount,
-      'purchase': currentPurchaseCount,
+       'purchase': currentPurchaseCount,
       'pickdate': pickdate,
       'duedate': duedate,
       'warehouse': selectedCategory!.c_title,
@@ -179,7 +229,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
   }
 
   double? discountValue;
-  double disc = 0.0;
 
   double? taxValue;
   double globalGrandTotal = 0.0;
@@ -280,7 +329,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
   double? discountadd;
 
   void assignGrandTotal() {
-    print("Grand total balance due ${disc.toString()}");
     print("Grand total balance due ${subtotal.toString()}");
 
     setState(() {
@@ -288,22 +336,39 @@ class _Add_PurchaseState extends State<Add_Purchase> {
         double enteredValue = double.parse(amountPaidController.text);
         print("Grand total Entered ${enteredValue}");
         print("Great Grand total Entered ${grandTotal}");
-
-        if (selectedDiscount != null && selectedTax != null) {
+        print("Tax Grand total Entered ${taxgrand}");
+        print("Global Grand total Entered ${globalGrandTotal}");
+        print("Grand total Entered ${grandTotal}");
+        if (selectedDiscount == null && selectedProducts.length > 1 && selectedTax == null) {
+          grandTotal -= enteredValue;
+          print("tax last grandaaaaaaa aaaa $grandTotal");
+          ramaining = grandTotal;
+        }
+        else if (selectedDiscount != null && selectedTax != null) {
           taxgrand -= enteredValue;
           print("tax last grand $taxgrand");
-        } else if (selectedProducts.length > 1 && selectedTax == null) {
-          taxgrand -= enteredValue;
-          print("tax last aaa grand $taxgrand");
+          ramaining = taxgrand;
         } else if (selectedDiscount != null) {
           globalGrandTotal -= enteredValue;
           print("tax last global grand $globalGrandTotal");
+          ramaining = globalGrandTotal;
         } else if (selectedTax != null) {
           taxgrand -= enteredValue;
           print("tax last aaaaa grandta  at a $taxgrand");
-        } else {
-          grandTotal -= enteredValue;
+          ramaining = taxgrand;
+        }
+        else if (selectedProducts.length > 1 && selectedDiscount ==null  ) {
+          globalGrandTotal -= enteredValue;
           print("tax last grandaaaaaaa aaaa $grandTotal");
+          ramaining = globalGrandTotal;
+        }
+        else if (selectedProducts.length > 1 && selectedTax == null) {
+          taxgrand -= enteredValue;
+          print("tax last aaa grand $taxgrand");
+          ramaining = taxgrand;
+        }
+        else{
+          print("nothing available");
         }
       }
     });
@@ -328,10 +393,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       finalAmount = finalAmount / 100; // Treat as a percentage
     }
 
-    // Perform calculations or further processing with the final amount
-    // (e.g., store, display, etc.)
-
-    // Reset the fields or perform any other necessary actions
     DocumentReference docRef =
         FirebaseFirestore.instance.collection('Discount').doc();
     var UnitId = docRef.id;
@@ -493,16 +554,13 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       } else {
         print("Failed to parse the current value as an integer");
       }
-
-      // int incrementedValue = int.parse(currentValue) + 1;
-      //
-      // print("incrementedValue $incrementedValue");
-
       print('Item value incremented successfully.');
     } catch (error) {
       print('Error incrementing item value: $error');
     }
   }
+
+  double ramaining= 0.0;
 
   Future<void> increaseItemByOneamount(String itemId) async {
     try {
@@ -518,7 +576,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       double enteredAmount = double.parse(currentValue);
       if (enteredAmount != null) {
         double incrementedValue =
-            enteredAmount + double.parse(amountPaidController.text);
+            enteredAmount + ramaining;
         print("incrementedValue $incrementedValue");
         String updatedValue = incrementedValue.toString();
 
@@ -529,10 +587,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       } else {
         print("Failed to parse the current value as an integer");
       }
-
-      // int incrementedValue = int.parse(currentValue) + 1;
-      //
-      // print("incrementedValue $incrementedValue");
 
       print('Item value incremented successfully.');
     } catch (error) {
@@ -627,10 +681,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
         print("Failed to parse the current value as an integer");
       }
 
-      // int incrementedValue = int.parse(currentValue) + 1;
-      //
-      // print("incrementedValue $incrementedValue");
-
       print('Item value incremented successfully.');
     } catch (error) {
       print('Error incrementing item value: $error');
@@ -709,14 +759,12 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
     if (selectedItemCount > 1) {
       combosubtotal = subtotal + itemSubtotal;
-      disc = combosubtotal;
       displaybalancedue = combosubtotal;
       previoussubtotal = itemSubtotal;
       grandTotal = itemSubtotal;
       print("Combosubtotal: $combosubtotal");
     } else {
       subtotal = itemSubtotal;
-      disc = combosubtotal;
       displaybalancedue = subtotal;
       previoussubtotal = subtotal;
       grandTotal = itemSubtotal;
@@ -781,7 +829,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     } else {
       grandTotal = previoussubtotal;
       print("No Discount Subtotal: ${grandTotal.toString()}");
-      disc = grandTotal;
       globalGrandTotal = grandTotal;
     }
   }
@@ -821,8 +868,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
     } else {
       grandTotal = selectedProducts.length > 1 ? combosubtotal : subtotal;
       print("No Tax Sub Total: ${grandTotal.toString()}");
-      disc = grandTotal;
-      print("Tax Grand Total: $disc");
     }
   }
 
@@ -956,7 +1001,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                       ),
                       child: Padding(
                         padding: const EdgeInsets.only(left: 15, top: 15),
-                        child: Text(
+                        child:Text(
                           (currentPurchaseCount + 1).toString(),
                           style: GoogleFonts.roboto(
                               color: Colors.black,
@@ -2170,43 +2215,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                                                   }
                                                                   calculatedextragrandtotal();
                                                                   newextralastgrand();
-                                                                  setState(() {
-                                                                    tableData
-                                                                        .add({
-                                                                      'Item': selectedProductModel
-                                                                          .p_name,
-                                                                      'Quantity':
-                                                                          _quantityController
-                                                                              .text,
-                                                                      'Rate': _ratesController
-                                                                          .text,
-                                                                      'Subtotal':
-                                                                          previoussubtotal,
-                                                                      'Discount': (selectedProducts.length > 1 &&
-                                                                              selectedDiscount == null)
-                                                                          ? '0'
-                                                                          : "${selectedDiscountText}${selectedDiscount != null && double.parse(selectedDiscount!.d_amount) < 1 ? '%' : ''}",
-                                                                      'Tax': (selectedProducts.length > 1 &&
-                                                                              selectedTax == null)
-                                                                          ? '0'
-                                                                          : "${selectedTaxText}${selectedTax != null && double.parse(selectedTax!.t_amount) < 1 ? '%' : ''}",
-                                                                      'Amount': (selectedProducts.length > 1 &&
-                                                                          (_extraamountController.text == null ||  _extraamountController.text.isEmpty))
-                                                                          ? '0'
-                                                                          : amounts.toString(),
-                                                                      'Grandtotal':
-                                                                      (selectedProducts.length > 1 &&
-                                                                          _extraamountController.text.isEmpty) ? extraValueForSecondProduct :
-                                                                      (selectedProducts.length > 1 &&
-                                                                              selectedTax ==
-                                                                                  null)
-                                                                          ? discountForSecondProduct
-                                                                              .toString()
-                                                                          : (selectedProducts.length > 1 && selectedDiscount == null)
-                                                                              ? taxForSecondProduct.toString()
-                                                                              : grandTotal.toString(),
-                                                                    });
-                                                                  });
+                                                                  saveDataAndResetFields(context);
                                                                 },
                                                                 child:
                                                                     Container(
@@ -2240,11 +2249,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                               ),
                                             );
                                           });
-                                        })
-                                      .then((value) {
-                                        // Reset the text field value when the dialog is closed
-                                        resetTextField();
-                                      });
+                                        });
                                   }
                                 });
                               },
@@ -2634,7 +2639,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           child: Padding(
                         padding: const EdgeInsets.only(left: 50, top: 10),
                         child: Text(
-                          "Rs. ${(selectedDiscount != null && selectedTax != null) ? taxgrand.toString() : (selectedProducts.length > 1 && selectedTax == null) ? taxgrand.toString() : selectedDiscount != null ? globalGrandTotal.toString() : selectedTax != null ? taxgrand.toString() : grandTotal.toString()}",
+                          'Rs. ${ramaining.toStringAsFixed(2)}',
                           style: GoogleFonts.roboto(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
@@ -2672,10 +2677,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           child: Padding(
                         padding: const EdgeInsets.only(left: 50, top: 10),
                         child: Text(
-                          'Rs. ${
-                              (extragrand != null && extragrand > 0)
-                                  ? extragrand.toString() :
-                              (selectedDiscount != null && selectedTax != null) ? taxgrand.toString() : (selectedProducts.length > 1 && selectedTax == null) ? taxgrand.toString() : selectedDiscount != null ? globalGrandTotal.toString() : selectedTax != null ? taxgrand.toString() : grandTotal.toString()}',
+                          "Rs. ${(selectedDiscount != null && selectedTax != null) ? taxgrand.toString() : (selectedProducts.length > 1 && selectedTax == null) ? taxgrand.toString() : selectedDiscount != null ? globalGrandTotal.toString() : selectedTax != null ? taxgrand.toString() : grandTotal.toString()}",
                           style: GoogleFonts.roboto(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,

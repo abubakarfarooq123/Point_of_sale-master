@@ -1,10 +1,13 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pos/home/drawer.dart';
 import 'package:pos/items/product/product.dart';
 import 'package:pos/user/edit_profile.dart';
@@ -57,11 +60,13 @@ class _Add_productState extends State<Add_product> {
 
   var name = "";
   var sku = "";
+  var amount = "";
   var restoke = "";
   var retail = "";
   var wholesale = "";
   var descript = "";
   var parchoon = "";
+
   BrandModel? selectedBrand; // Declare the vafriable
   CategoryModel? selectedCategory; // Declare the variable
   UnitModel? selectedUnit; // Declare the variable
@@ -77,10 +82,12 @@ class _Add_productState extends State<Add_product> {
   final wholesaleController = TextEditingController();
   final descriptController = TextEditingController();
   final parchoonController = TextEditingController();
+  final amountController = TextEditingController();
 
   void dispose() {
     nameController.dispose();
     skuController.dispose();
+    amountController.dispose();
     restokeController.dispose();
     retailController.dispose();
     wholesaleController.dispose();
@@ -89,49 +96,105 @@ class _Add_productState extends State<Add_product> {
     additionalTextController.dispose();
     super.dispose();
   }
+  bool _isUploading = false;
+
+  void _startUploading() {
+    setState(() {
+      _isUploading = true;
+    });
+  }
+
+  void _finishUploading() {
+    setState(() {
+      _isUploading = false;
+    });
+  }
 
   double? dividedValue;
   double? parchoondividedValue;
   double? wholesaledividedValue;
 
-  add()  {
-    DocumentReference docRef =
-        FirebaseFirestore.instance.collection('Product').doc();
-    var brandId = docRef.id;
+  List<String> selectedUnitTitles = ['', '']; // Initialize with empty values
 
-     docRef
-        .set({
-          'id': brandId,
-          'item': name,
-          'brand': selectedBrand!.title,
-          'category': selectedCategory!.c_title,
-          'unit': selectedUnit?.u_title != null
-              ? selectedUnit!.u_title
-              : combinedValue,
-          'sku': sku,
-          'restoke': restoke,
-          'retail': retail,
-          'wholesale': wholesale,
-          'des': descript,
-          'quantity': '0',
-          'expiry': '',
-          'rate': '0',
-          'conversion': additionalTextController.text,
-          'val': dividedValue,
-          'wholesaleval': wholesaledividedValue,
-          'parchoon': parchoondividedValue,
-          'parchoonval': parchoon,
-        })
-        .then((value) => print('User Added'))
-        .catchError((error) => print('Failed to add user: $error'));
-    print('combinedValue: $combinedValue');
+  void add() {
+    _startUploading();
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Product(),
-      ),
-    );
+    uploadImageToStorage().then((imageUrl) {
+      DocumentReference docRef =
+      FirebaseFirestore.instance.collection('Product').doc();
+      var brandId = docRef.id;
+
+      if (selectedUnit?.u_title != null) {
+        selectedUnitTitles[1] = selectedUnit!.u_title;
+      }
+      else {
+      }
+
+      Map<String, dynamic> documentData = {
+        'id': brandId,
+        'item': name,
+        'brand': selectedBrand!.title,
+        'category': selectedCategory!.c_title,
+        'unit': selectedUnitTitles,
+        'sku': sku,
+        'amount': amountController.text != null && amountController.text.isNotEmpty
+            ? amountController.text
+            : "0.0",
+        'restoke': restoke,
+        'des': descript,
+        'additional':'0',
+        'quantity': '0',
+        'expiry': '',
+        'rate': '0',
+        'conversion': additionalTextController.text,
+        'simple_values': {
+          selectedUnitTitles[1]: {
+            'retail': retail,
+            'wholesale': wholesale,
+            'parchoonval': parchoon,
+          },
+        },
+        'image_url': imageUrl, // Store the image URL in Firestore
+      };
+
+      if (selectedUnitMin != null) {
+        documentData['divided_values'] = {
+          selectedUnitTitles[0]: {
+            'val': dividedValue !=null ? dividedValue : '0',
+            'wholesaleval': wholesaledividedValue !=null ? wholesaledividedValue :'0',
+            'parchoon': parchoondividedValue !=null ? parchoondividedValue : '0',
+          },
+        };
+      }
+
+      docRef
+          .set(documentData)
+          .then((value) => print('Product Added'))
+          .catchError((error) => print('Failed to add product: $error'));
+
+      print('combinedValue: $combinedValue');
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Product(),
+        ),
+      );
+    }).catchError((error) {
+      // Handle error (you can show an error message here if needed)
+      _finishUploading();
+    });
+  }
+
+  Future<String> uploadImageToStorage() {
+    if (_image == null) return Future.value(''); // No image selected
+
+    Reference storageRef = FirebaseStorage.instance.ref().child('product_images').child('${DateTime.now()}.png');
+    UploadTask uploadTask = storageRef.putFile(_image!);
+
+    return uploadTask.then((snapshot) {
+      return snapshot.ref.getDownloadURL();
+    });
   }
 
   bool radioButtonValue = false;
@@ -211,6 +274,32 @@ class _Add_productState extends State<Add_product> {
       print('Error incrementing item value: $error');
     }
   }
+
+  File? _image; // Variable to store the selected image
+
+  Future<void> _getImageFromGallery() {
+    return ImagePicker().getImage(source: ImageSource.gallery).then((pickedFile) {
+      if (pickedFile != null) {
+        setState(() {
+          _image = File(pickedFile.path);
+        });
+      }
+    });
+  }
+
+  Future<void> _getImageFromCamera() {
+    return ImagePicker().getImage(source: ImageSource.camera).then((pickedFile) {
+      if (pickedFile != null) {
+        setState(() {
+          _image = File(pickedFile.path);
+        });
+      }
+    });
+  }
+
+
+
+
   Future<void> increaseItemByOne(String itemId) async {
     try {
       DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
@@ -358,6 +447,38 @@ class _Add_productState extends State<Add_product> {
                   Padding(
                     padding: const EdgeInsets.only(top: 20),
                     child: InkWell(
+                      onTap: () {
+                        showModalBottomSheet<void>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return Container(
+                              height: 120,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  ListTile(
+                                    leading: Icon(Icons.photo_library),
+                                    title: Text('Choose from Gallery'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _getImageFromGallery();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: Icon(Icons.camera_alt),
+                                    title: Text('Take a Photo'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _getImageFromCamera();
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
                       child: Container(
                         child: DottedBorder(
                           color: Colors.black,
@@ -367,14 +488,24 @@ class _Add_productState extends State<Add_product> {
                             height: 160,
                             width: 190,
                             child: Center(
-                              child: Image.asset("assets/images/img.png",
-                                  width: 80, height: 60),
+                              child: _image != null
+                                  ? Image.file(
+                                _image!,
+                                width: 120,
+                                height: 120,
+                              )
+                                  : Image.asset(
+                                "assets/images/img.png",
+                                width: 80,
+                                height: 60,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
+
                   SizedBox(
                     height: 20,
                   ),
@@ -812,85 +943,77 @@ class _Add_productState extends State<Add_product> {
                                 SizedBox(width: 16.0),
                                 Expanded(
                                   child: Container(
-                                      width: 279,
-                                      height: 60,
-                                      padding:
-                                          EdgeInsets.only(left: 16, right: 16),
-                                      decoration: BoxDecoration(
-                                          border: Border.all(
-                                              color: Colors.grey, width: 1),
-                                          borderRadius:
-                                              BorderRadius.circular(15)),
-                                      child: StreamBuilder<QuerySnapshot>(
-                                        stream: FirebaseFirestore.instance
-                                            .collection('Unit')
-                                            .snapshots(),
-                                        builder: (BuildContext context,
-                                            AsyncSnapshot<QuerySnapshot>
-                                                snapshot) {
-                                          if (snapshot.hasError) {
-                                            return Text(
-                                                'Error: ${snapshot.error}');
-                                          }
-                                          if (snapshot.connectionState ==
-                                              ConnectionState.waiting) {
-                                            return Center(
-                                                child:
-                                                    CircularProgressIndicator());
-                                          }
-                                          List<UnitModel> unitItems = [];
-                                          snapshot.data?.docs.forEach((doc) {
-                                            String docId = doc.id;
-                                            String title = doc['name'];
-                                            unitItems
-                                                .add(UnitModel(docId, title));
-                                          });
+                                    width: 280,
+                                    height: 60,
+                                    padding:
+                                    EdgeInsets.only(left: 16, right: 0),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.grey, width: 1),
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: StreamBuilder<QuerySnapshot>(
+                                      stream: FirebaseFirestore.instance
+                                          .collection('Unit')
+                                          .snapshots(),
+                                      builder: (BuildContext context,
+                                          AsyncSnapshot<QuerySnapshot>
+                                          snapshot) {
+                                        if (snapshot.hasError) {
+                                          return Text(
+                                              'Error: ${snapshot.error}');
+                                        }
+                                        if (snapshot.connectionState ==
+                                            ConnectionState.waiting) {
+                                          return Center(
+                                              child:
+                                              CircularProgressIndicator());
+                                        }
+                                        List<UnitModel> unitItems = [];
+                                        snapshot.data?.docs.forEach((doc) {
+                                          String docId = doc.id;
+                                          String title = doc['name'];
+                                          unitItems
+                                              .add(UnitModel(docId, title));
+                                        });
 
-                                          // Assign the first brand item as the default selectedBrand
-                                          if (selectedUnitMax == null &&
-                                              unitItems.isNotEmpty) {
-                                            selectedUnitMax = unitItems[0];
-                                          }
-
-                                          return DropdownButton<UnitModel>(
-                                            iconSize: 40,
-                                            isExpanded: true,
-                                            underline: SizedBox(),
-                                            value: selectedUnitMax,
-                                            items: unitItems.map((unit) {
-                                              return DropdownMenuItem<
-                                                  UnitModel>(
-                                                value: unit,
-                                                child: Text(unit.u_title),
-                                              );
-                                            }).toList(),
-                                            onChanged: (value) {
-                                              setState(() {
-                                                selectedUnitMax = value;
-                                                setvalue = value;
-                                                if (selectedUnitMax != null) {
-                                                  showAdditionalTextField =
-                                                      true;
-                                                } else {
-                                                  showAdditionalTextField =
-                                                      false;
-                                                  additionalTextController
-                                                      .clear();
-                                                }
-                                                print(
-                                                    'The selected brand ID is ${selectedUnitMax!.u_id}');
-                                                print(
-                                                    'The selected brand ID1 is ${setvalue}');
-                                                print(
-                                                    'The selected brand title is ${selectedUnitMax!.u_title}');
-                                                // Perform further operations with the selected brand
-                                              });
-                                              combinedValue =
-                                                  '${selectedUnitMin!.u_title} - ${selectedUnitMax!.u_title}';
-                                            },
-                                          );
-                                        },
-                                      )),
+                                        return DropdownButton<UnitModel>(
+                                          iconSize: 40,
+                                          isExpanded: true,
+                                          underline: SizedBox(),
+                                          hint: Text('Select unit'),
+                                          value: selectedUnitMax,
+                                          items: unitItems.map((unit) {
+                                            return DropdownMenuItem<UnitModel>(
+                                              value: unit,
+                                              child: Text(unit.u_title),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              selectedUnitMax = value;
+                                              setvalue = value;
+                                              if (selectedUnitMax != null && selectedUnitMax!.u_id != 'placeholder') {
+                                                showAdditionalTextField = true;
+                                              } else {
+                                                showAdditionalTextField = false;
+                                                additionalTextController.clear();
+                                              }
+                                              print(
+                                                  'The selected brand ID is ${selectedUnitMax!.u_id}');
+                                              print(
+                                                  'The selected brand ID1 is ${setvalue}');
+                                              print(
+                                                  'The selected brand title is ${selectedUnitMax!.u_title}');
+                                              // Perform further operations with the selected brand
+                                            });
+                                            selectedUnitTitles[0] = selectedUnitMin?.u_title ?? '';
+                                            selectedUnitTitles[1] = selectedUnitMax?.u_title ?? '';
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
                                 ),
                                 SizedBox(
                                   width: 20,
@@ -931,12 +1054,44 @@ class _Add_productState extends State<Add_product> {
                           ],
                         ),
                       ),
-                      SizedBox(
-                        height: 10,
-                      ),
                     ],
                   ),
-
+                  Padding(
+                    padding: const EdgeInsets.only(left: 18,right: 18,bottom: 18),
+                    child: Container(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text("Enter If item is Cylinder",style: GoogleFonts.roboto(
+                          color: Colors.black,
+                          fontSize: 14
+                        ),)),
+                  ),
+                  Padding(
+                    padding:
+                    const EdgeInsets.only(left: 18, right: 18, bottom: 18),
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: 'Cylinder Weight',
+                        enabledBorder: OutlineInputBorder(
+                          borderSide:
+                          BorderSide(color: Colors.grey, width: 1),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        errorStyle: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 15.0,
+                        ),
+                        icon: Icon(
+                          FontAwesomeIcons.cubes,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      controller: amountController,
+                    ),
+                  ),
+                  SizedBox(
+                    height: 10
+                  ),
                   Padding(
                     padding:
                         const EdgeInsets.only(left: 18, right: 18, bottom: 18),
@@ -1166,81 +1321,106 @@ class _Add_productState extends State<Add_product> {
                   SizedBox(
                     height: 20,
                   ),
-                  // ignore: deprecated_member_use
-                  Container(
-                    height: 45.0,
-                    width: 320.0,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: Colors.blue,
-                    ),
-                    child: InkWell(
-                      onTap: () {
-                        if (_formKey.currentState!.validate()) {
-                          if (selectedBrand == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Please select a Brand."),
-                                duration: Duration(seconds: 2),
-                                behavior: SnackBarBehavior.fixed,
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _isUploading
+                            ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(color: Colors.grey,strokeWidth: 2,backgroundColor: Colors.grey),
+                            SizedBox(height: 10),
+                            Text('Uploading...',style: GoogleFonts.roboto(
+                              color: Colors.black,
+                              fontSize: 14
+                            ),),
+                          ],
+                        )
+                            : SizedBox.shrink(),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        Container(
+                          height: 45.0,
+                          width: 320.0,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.blue,
+                          ),
+                          child:
+                          _isUploading ? null :
+                          InkWell(
+                            onTap: () {
+                              if (_formKey.currentState!.validate()) {
+                                if (selectedBrand == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text("Please select a Brand."),
+                                      duration: Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.fixed,
+                                    ),
+                                  );
+                                } else if (selectedCategory == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text("Please select a Category."),
+                                      duration: Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.fixed,
+                                    ),
+                                  );
+                                } else {
+                                  // All selections are made, proceed with the add() function
+                                  setState(() {
+                                    name = nameController.text;
+                                    sku = skuController.text;
+                                    restoke = restokeController.text;
+                                    retail = retailController.text;
+                                    wholesale = wholesaleController.text;
+                                    parchoon = parchoonController.text;
+                                    descript = descriptController.text;
+                                  });
+                                  add();
+
+                                  // Perform null checks before using the selected objects
+                                  if (selectedBrand != null) {
+                                    increaseItemByOne(selectedBrand!.id);
+                                    print('the item id is ${selectedBrand!.id}');
+                                  }
+
+                                  if (selectedUnit != null) {
+                                    increaseItemByOneUnit(selectedUnit!.u_id);
+                                  }
+
+                                  if (selectedUnitMin != null) {
+                                    increaseItemByOneUnit(selectedUnit!.u_id);
+                                  }
+
+                                  if (selectedUnitMax != null) {
+                                    increaseItemByOneUnit(selectedUnit!.u_id);
+                                  }
+                                  if (selectedCategory != null) {
+                                    increaseItemByOneCategory(selectedCategory!.c_id);
+                                  }
+                                }
+                              }
+                            },
+                            child: Center(
+                              child: Text(
+                                'Save',
+                                style: TextStyle(
+                                  fontSize: 16.0,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            );
-                          } else if (selectedCategory == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Please select a Category."),
-                                duration: Duration(seconds: 2),
-                                behavior: SnackBarBehavior.fixed,
-                              ),
-                            );
-                          } else {
-                            // All selections are made, proceed with the add() function
-                            setState(() {
-                              name = nameController.text;
-                              sku = skuController.text;
-                              restoke = restokeController.text;
-                              retail = retailController.text;
-                              wholesale = wholesaleController.text;
-                              parchoon = parchoonController.text;
-                              descript = descriptController.text;
-                            });
-                            add();
-
-                            // Perform null checks before using the selected objects
-                            if (selectedBrand != null) {
-                              increaseItemByOne(selectedBrand!.id);
-                              print('the item id is ${selectedBrand!.id}');
-                            }
-
-                            if (selectedUnit != null) {
-                              increaseItemByOneUnit(selectedUnit!.u_id);
-                            }
-
-                            if (selectedUnitMin != null) {
-                              increaseItemByOneUnit(selectedUnit!.u_id);
-                            }
-
-                            if (selectedUnitMax != null) {
-                              increaseItemByOneUnit(selectedUnit!.u_id);
-                            }
-                            if (selectedCategory != null) {
-                              increaseItemByOneCategory(selectedCategory!.c_id);
-                            }
-                          }
-                        }
-                      },
-                      child: Center(
-                        child: Text(
-                          'Save',
-                          style: TextStyle(
-                            fontSize: 16.0,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
+
                   SizedBox(
                     height: 20.0,
                   ),

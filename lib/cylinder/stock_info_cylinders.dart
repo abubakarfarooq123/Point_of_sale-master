@@ -187,8 +187,6 @@ class _Stock_Info_CylinderState extends State<Stock_Info_Cylinder> {
                                   height: 1,
                                 );
                               }
-
-                              // Calculate the actual index of the data in the emptyStockInfo map
                               final dataIndex = index ~/ 2;
                               final cylinderName =
                                   emptyStockInfo.keys.elementAt(dataIndex);

@@ -127,6 +127,80 @@ String bag="";
   int currentPurchaseCount = 0;
 
 
+  Future<void> increaseItemByOnewarehouse(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('warehouse')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['cost'];
+
+      print("CurrentValue $currentValue");
+
+      double enteredAmount = double.parse(currentValue);
+      if (enteredAmount != null) {
+        double incrementedValue = enteredAmount + _result;
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+
+        // Now you can use the updatedValue as needed
+        await FirebaseFirestore.instance
+            .collection('warehouse')
+            .doc(itemId)
+            .update({'cost': updatedValue});
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
+
+
+
+
+
+  Future<void> increaseItemByOne(String itemId) async {
+    try {
+      double totalQuantity = calculateTotalQuantity();
+
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('Product')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['quantity'];
+
+      print("CurrentValue $currentValue");
+
+      double enteredAmount = double.parse(currentValue);
+      if (enteredAmount != null) {
+        double incrementedValue =
+            enteredAmount + totalQuantity;
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+
+        // Now you can use the updatedValue as needed
+        await FirebaseFirestore.instance
+            .collection('Product')
+            .doc(itemId)
+            .update({'quantity': updatedValue,
+        'rate' : _isSwitchedOn ? _textEditingController.text : finalval,
+        });
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
+
+
   Future<void> increaseItemByOneamount(String itemId) async {
     try {
       DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
@@ -188,7 +262,7 @@ String bag="";
 
 
     String previousBalanceString = await getPreviousBalanceForCustomer(customerId);
-    double previousBalance = 0.0; // Default value if previousBalanceString is empty
+    double previousBalance = 0.0;
 
     if (previousBalanceString.isNotEmpty) {
       previousBalance = double.parse(previousBalanceString);
@@ -226,6 +300,7 @@ String bag="";
       'bag':bag,
       'previous': previousBalanceString,
       'after': updatedValue,
+
 
     });
     setState(() {
@@ -311,6 +386,7 @@ String bag="";
     double totalQuantity = calculateTotalQuantity(); // Call the function to get the totalQuantity
     setState(() {
       _result = value * totalQuantity;
+      finalval = value * 50;
       print("result ts ts ts $_result");
     });
   }
@@ -318,6 +394,7 @@ String bag="";
 
 
 
+  double finalval =0.0;
 
   double bags =0.0;
   int selectedItemCount = 0;
@@ -966,7 +1043,7 @@ String bag="";
                       ),
                       Expanded(
                         child: Text(
-                          '$bag', // Show total quantity with two decimal places
+                          bag, // Show total quantity with two decimal places
                           style: GoogleFonts.poppins(
                             color: Colors.black,
                             fontSize: 16,
@@ -998,8 +1075,8 @@ String bag="";
                                       _textEditingController.text) ??
                                   0.0;
                               if (_isSwitchedOn) {
-                                _functionWhenSwitchedOn(inputValue);
-                              } else {
+                                _functionWhenSwitchedOn(inputValue);}
+                              else {
                                 _functionWhenSwitchedOff(inputValue);
                               }
                             });
@@ -1157,6 +1234,8 @@ String bag="";
                                     duedate = _due_dateController.text;
                                   });
                                   add(selectedSupplier!.s_id);
+                                  increaseItemByOne(selectedProduct!.p_id);
+                                  increaseItemByOnewarehouse(selectedCategory!.c_id);
                                   print(" it is $currentPurchaseCount");
                                 }
                               }

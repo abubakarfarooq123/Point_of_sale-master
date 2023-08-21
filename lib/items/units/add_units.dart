@@ -33,14 +33,18 @@ class _Add_UnitState extends State<Add_Unit> {
     DocumentReference docRef = FirebaseFirestore.instance.collection('Unit').doc();
     var UnitId = docRef.id;
 
+    String lowercaseName = name.toLowerCase(); // Convert 'name' to lowercase
+    String lowercaseLabel = short_name.toLowerCase(); // Convert 'short_name' to lowercase
+
     await docRef.set({
       'id': UnitId,
-      'name': name,
-      'lable': short_name,
-      'items':"0",
+      'name': lowercaseName,
+      'lable': lowercaseLabel,
+      'items': "0",
     })
         .then((value) => print('User Added'))
         .catchError((error) => print('Failed to add user: $error'));
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(

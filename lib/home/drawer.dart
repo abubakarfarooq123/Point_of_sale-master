@@ -242,18 +242,18 @@ class _MyDrawerState extends State<MyDrawer> {
                 ),
                 leading: Icon(FontAwesomeIcons.cube, size: 28,),
                 children: [
-                  ListTile(
-                    title: Text("Cylinder Type", style: GoogleFonts.roboto(
-                      color: Colors.black,
-                    ),
-                    ),
-                    leading: Icon(FontAwesomeIcons.cubes),
-
-                    onTap: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                          builder: (BuildContext context) => Cylinder_Type()));
-                    },
-                  ),
+                  // ListTile(
+                  //   title: Text("Cylinder Type", style: GoogleFonts.roboto(
+                  //     color: Colors.black,
+                  //   ),
+                  //   ),
+                  //   leading: Icon(FontAwesomeIcons.cubes),
+                  //
+                  //   onTap: () {
+                  //     Navigator.of(context).push(MaterialPageRoute(
+                  //         builder: (BuildContext context) => Cylinder_Type()));
+                  //   },
+                  // ),
                   ListTile(
                     title: Text("Empty Cylinder", style: GoogleFonts.roboto(
                       color: Colors.black,

@@ -151,6 +151,42 @@ class _Add_CylinderState extends State<Add_Cylinder> {
     });
   }
 
+  Future<void> increaseItemByOnewarehouse(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('warehouse')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['cost'];
+
+      print("CurrentValue $currentValue");
+
+      double enteredAmount = double.parse(currentValue);
+      if (enteredAmount != null) {
+        double incrementedValue = enteredAmount + ( selectedCylinders.length > 1 ? combosubtotal :
+        (extragrand != null && extragrand > 0) ? extragrand :
+        greatgrandTotal );
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+
+        // Now you can use the updatedValue as needed
+        await FirebaseFirestore.instance
+            .collection('warehouse')
+            .doc(itemId)
+            .update({'cost': updatedValue});
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
+
+
+
   double subtotal = 0.0;
   double previoussubtotal = 0.0;
   double combosubtotal = 0.0;
@@ -1533,64 +1569,67 @@ class _Add_CylinderState extends State<Add_Cylinder> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(right: 15, top: 20),
-                    child: Container(
-                      height: 45.0,
-                      width: 320.0,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.blue,
-                      ),
-                      child: InkWell(
-                        onTap: () {
-                          if (formKey.currentState!.validate()) {
-                            if (selectedCylinder == null) {
-                              // Display error message for missing item selection
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("Please select cylinder type."),
-                                  duration: Duration(seconds: 2),
-                                  behavior: SnackBarBehavior.fixed,
-                                ),
-                              );
-                            } else if (selectedCategory == null) {
-                              // Display error message for missing category selection
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("Please select a Warehouse."),
-                                  duration: Duration(seconds: 2),
-                                  behavior: SnackBarBehavior.fixed,
-                                ),
-                              );
-                            } else if (selectedSupplier == null) {
-                              // Display error message for missing warehouse selection
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("Please select a Supplier."),
-                                  duration: Duration(seconds: 2),
-                                  behavior: SnackBarBehavior.fixed,
-                                ),
-                              );
-                            } else {
-                              // All selections are made, proceed with the add() function
-                              setState(() {
-                                pickdate = _purchasedateController.text;
-                                duedate = _due_dateController.text;
-                              });
-                              // add();
-                              increaseItemByOneamount(selectedSupplier!.s_id);
-                              onSaveButtonPressed();
-                              print(" it is $currentPurchaseCount");
+                    padding: const EdgeInsets.only(right: 15, top: 50),
+                    child: Center(
+                      child: Container(
+                        height: 45.0,
+                        width: 320.0,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.blue,
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            if (formKey.currentState!.validate()) {
+                              if (selectedCylinder == null) {
+                                // Display error message for missing item selection
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Please select cylinder type."),
+                                    duration: Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.fixed,
+                                  ),
+                                );
+                              } else if (selectedCategory == null) {
+                                // Display error message for missing category selection
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Please select a Warehouse."),
+                                    duration: Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.fixed,
+                                  ),
+                                );
+                              } else if (selectedSupplier == null) {
+                                // Display error message for missing warehouse selection
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Please select a Supplier."),
+                                    duration: Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.fixed,
+                                  ),
+                                );
+                              } else {
+                                // All selections are made, proceed with the add() function
+                                setState(() {
+                                  pickdate = _purchasedateController.text;
+                                  duedate = _due_dateController.text;
+                                });
+                                // add();
+                                increaseItemByOneamount(selectedSupplier!.s_id);
+                                increaseItemByOnewarehouse(selectedCategory!.c_id);
+                                onSaveButtonPressed();
+                                print(" it is $currentPurchaseCount");
+                              }
                             }
-                          }
-                        },
-                        child: Center(
-                          child: Text(
-                            'Save',
-                            style: TextStyle(
-                              fontSize: 16.0,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                          },
+                          child: Center(
+                            child: Text(
+                              'Save',
+                              style: TextStyle(
+                                fontSize: 16.0,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),

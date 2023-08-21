@@ -97,6 +97,15 @@ class _ProductState extends State<Product> {
     });
    }
 
+  UnitModel getUnitItemByIndex(List<UnitModel> unitItems, int index) {
+    if (index >= 0 && index < unitItems.length) {
+      return unitItems[index];
+    } else {
+      return UnitModel('', ''); // Return a default unit or handle as needed
+    }
+  }
+
+  List<UnitModel> unitItems = []; // Define the list of unit items
 
 
   var name = "";
@@ -456,13 +465,32 @@ class _ProductState extends State<Product> {
                           String brand = employeeData['brand'];
                           String category = employeeData['category'];
                           String sku = employeeData['sku'];
-                          String unit = employeeData['unit'];
-                          String rate = employeeData['rate'];
-                          String retail = employeeData['retail'];
-                          String wholesale = employeeData['wholesale'];
-                          String parchoon = employeeData['parchoonval'];
-                          String quantity = employeeData['quantity'];
+                          dynamic unitData = employeeData['unit'];
+                          String unit;
+
+                          if (unitData is List<dynamic>) {
+                            unit = unitData.join(', ');
+                          } else if (unitData is String) {
+                            unit = unitData;
+                          } else {
+                            unit = '';
+                          }
+                          String rate = employeeData['rate'].toString();
+                          String quantity = employeeData['quantity'].toString();
                           String des = employeeData['des'];
+
+                          Map<String, dynamic> simpleValues = employeeData['simple_values'] ?? {};
+                          UnitModel selectedUnitItem = getUnitItemByIndex(unitItems, index);
+
+                          Map<String, dynamic> selectedUnitValues = simpleValues[selectedUnitItem.u_title] ?? {};
+
+                          String unit1Data = '';
+
+                          if (unitData is List<dynamic> && unitData.length > 1) {
+                            unit1Data = unitData[1].toString();
+                          }
+
+
 
                           return DataRow.byIndex(
                             index: index,
@@ -483,9 +511,9 @@ class _ProductState extends State<Product> {
                               DataCell(Text(sku ?? '')),
                               DataCell(Text(unit ?? '')),
                               DataCell(Text(rate ?? '')),
-                              DataCell(Text(retail ?? '')),
-                              DataCell(Text(wholesale ?? '')),
-                              DataCell(Text(parchoon ?? '')),
+                              DataCell(Text(simpleValues[unit1Data]['retail'].toString())),
+                              DataCell(Text(simpleValues[unit1Data]['wholesale'].toString())),
+                              DataCell(Text(simpleValues[unit1Data]['parchoonval'].toString())),
                               DataCell(Text(quantity ?? '')),
                               DataCell(Text(des ?? '')),
                             ],
@@ -567,6 +595,7 @@ class _ProductState extends State<Product> {
   void showEditProfileDialog(BuildContext context, dynamic customerData) {
 
 
+
     void _updateSelectedValues() {
       String name1 = nameController.text;
       String sku1 = skuController.text;
@@ -598,15 +627,38 @@ class _ProductState extends State<Product> {
           .update(data);
     }
 
+    dynamic unitData = customerData['unit'];
+    String unit;
+
+    if (unitData is List<dynamic>) {
+      unit = unitData.join(', ');
+    } else if (unitData is String) {
+      unit = unitData;
+    } else {
+      unit = '';
+    }
+
+
+    Map<String, dynamic> simpleValues = customerData['simple_values'] ?? {};
+    UnitModel selectedUnitItem = getUnitItemByIndex(unitItems, 1);
+    Map<String, dynamic> selectedUnitValues = simpleValues[selectedUnitItem.u_title] ?? {};
+
+    String unit1Data = '';
+    if (unitData is List<dynamic> && unitData.length > 1) {
+      unit1Data = unitData[1].toString();
+    }
+
+
     nameController.text = customerData['item'] ?? '';
     skuController.text = customerData['sku']?.toString() ?? '';
     restokeController.text = customerData['restoke'] ?? '';
-    retailController.text = customerData['retail']?.toString() ?? '';
-    wholesaleController.text = customerData['wholesale']?.toString() ?? '';
+    retailController.text = simpleValues[unit1Data]['retail']?.toString() ?? '';
+    parchoonController.text = simpleValues[unit1Data]['parchoonval']?.toString() ?? '';
+    wholesaleController.text = simpleValues[unit1Data]['wholesale']?.toString() ?? '';
     descriptController.text = customerData['des']?.toString() ?? '';
-    parchoonController.text = customerData['parchoonval']?.toString() ?? '';
     selectedCategoryId = customerData['category']?.toString() ?? '';
     selectedBrandId= customerData['brand']?.toString() ?? '';
+
 
     showDialog(
       context: context,
@@ -1102,16 +1154,35 @@ class _ProductState extends State<Product> {
   String? stock;
   void showEditProfileDetailDialog(BuildContext context, dynamic customerData) {
 
+
+    dynamic unitData = customerData['unit'];
+
+
+    if (unitData is List<dynamic>) {
+      Unitid = unitData.join(' ');
+    } else if (unitData is String) {
+      Unitid = unitData;
+    } else {
+      Unitid = '';
+    }
+
+
+    Map<String, dynamic> simpleValues = customerData['simple_values'] ?? {};
+
+    String unit1Data = '';
+    if (unitData is List<dynamic> && unitData.length > 1) {
+      unit1Data = unitData[1].toString();
+    }
+
     nameController.text = customerData['item'] ?? '';
     skuController.text = customerData['sku']?.toString() ?? '';
     restokeController.text = customerData['restoke'] ?? '';
-    retailController.text = customerData['retail']?.toString() ?? '';
-    wholesaleController.text = customerData['wholesale']?.toString() ?? '';
+    retailController.text = simpleValues[unit1Data]['retail']?.toString() ?? '';
+    parchoonController.text = simpleValues[unit1Data]['parchoonval']?.toString() ?? '';
+    wholesaleController.text = simpleValues[unit1Data]['wholesale']?.toString() ?? '';
     descriptController.text = customerData['des']?.toString() ?? '';
-    parchoonController.text = customerData['parchoonval']?.toString() ?? '';
     selectedCategoryId = customerData['category']?.toString() ?? '';
     selectedBrandId= customerData['brand']?.toString() ?? '';
-    Unitid= customerData['unit']?.toString() ?? '';
     rate = customerData['rate']?.toString() ?? '';
     stock = customerData['quantity']?.toString() ?? '';
 

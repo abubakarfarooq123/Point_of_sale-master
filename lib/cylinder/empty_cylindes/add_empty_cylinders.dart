@@ -40,7 +40,6 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
 
   @override
   CategoryModel? selectedCategory;
-  CylinderModel? selectedCylinder;
 
   var company = "";
   var name = "";
@@ -95,6 +94,83 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
 
   }
   int selectedItemCount = 0;
+
+
+
+  ProductModel? selectedProduct;
+
+  Future<void> increaseItemByOnewarehouse(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('warehouse')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['cost'];
+
+      print("CurrentValue $currentValue");
+
+      double enteredAmount = double.parse(currentValue);
+      if (enteredAmount != null) {
+        double incrementedValue = enteredAmount + grandTotal;
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+
+        // Now you can use the updatedValue as needed
+        await FirebaseFirestore.instance
+            .collection('warehouse')
+            .doc(itemId)
+            .update({'cost': updatedValue});
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
+
+
+
+
+  Future<void> increaseItemByOne(String itemId) async {
+    try {
+
+
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('Product')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['quantity'];
+
+      print("CurrentValue $currentValue");
+
+      double quantityyyy = double.parse(quantityController.text);
+      double enteredAmount = double.parse(currentValue);
+      if (enteredAmount != null) {
+        double incrementedValue =
+            enteredAmount + quantityyyy;
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+
+        // Now you can use the updatedValue as needed
+        await FirebaseFirestore.instance
+            .collection('Product')
+            .doc(itemId)
+            .update({'quantity': updatedValue,
+          'rate' : amountPaidController.text,
+        });
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
 
 
 
@@ -158,7 +234,7 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
     docRef.set({
 
       'id': brandId,
-      'cylinder': selectedCylinder!.cy_title,
+      'cylinder': selectedProduct!.p_name,
       'count': selectedItemCount,
       'warehouse': selectedCategory!.c_title,
       'purchase': currentPurchaseCount,
@@ -168,7 +244,7 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
       'today_amount': amountPaidController.text,
       'quantity': quantityController.text,
       'total': grandTotal,
-      'weight': selectedCylinder!.amount,
+      'weight': selectedProduct!.amount,
       'piad': amounttotoPaidController.text,
       'remaining': remaining,
 
@@ -642,7 +718,7 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
                       ),
                       child: StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
-                            .collection('cylinder_type')
+                            .collection('Product')
                             .snapshots(),
                         builder: (BuildContext context,
                             AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -653,29 +729,29 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
                               ConnectionState.waiting) {
                             return Center(child: CircularProgressIndicator());
                           }
-                          List<CylinderModel> unitItems = [];
+                          List<ProductModel> unitItems = [];
                           snapshot.data?.docs.forEach((doc) {
                             String docId = doc.id;
-                            String title = doc['lable'];
+                            String title = doc['item'];
                             double amount = double.parse(
                                 doc['amount']); // Convert string to double
-                            unitItems.add(CylinderModel(docId, title, amount));
+                            unitItems.add(ProductModel(docId, title, amount));
                           });
-                          return DropdownButton<CylinderModel>(
+                          return DropdownButton<ProductModel>(
                             iconSize: 40,
                             isExpanded: true,
                             underline: SizedBox(),
                             hint: Text('Select Cylinder'),
-                            value: selectedCylinder,
+                            value: selectedProduct,
                             items: unitItems.map((unit) {
-                              return DropdownMenuItem<CylinderModel>(
+                              return DropdownMenuItem<ProductModel>(
                                 value: unit,
-                                child: Text(unit.cy_title),
+                                child: Text(unit.p_name),
                               );
                             }).toList(),
                             onChanged: (value) {
                               setState(() {
-                                selectedCylinder = value;
+                                selectedProduct = value;
 
                                 print(
                                     "selectedItemCount is $selectedItemCount");
@@ -722,8 +798,8 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
                                                                         .bold),
                                                               ),
                                                               Text(
-                                                                selectedCylinder!
-                                                                    .cy_title,
+                                                                selectedProduct!
+                                                                    .p_name,
                                                                 style: GoogleFonts
                                                                     .roboto(
                                                                   color:
@@ -892,7 +968,7 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
                       width: 30,
                     ),
                     Text(
-                      selectedCylinder?.cy_title ?? 'No Cylinder Selected',
+                      selectedProduct?.p_name ?? 'No Cylinder Selected',
                       style: GoogleFonts.roboto(
                         color: Colors.black,
                         fontSize: 16,
@@ -1021,7 +1097,7 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
                         child: InkWell(
                           onTap: () {
                             if (formKey.currentState!.validate()) {
-                              if (selectedCylinder == null) {
+                              if (selectedProduct == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text("Please select cylinder type."),
@@ -1055,6 +1131,8 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
                                 });
                                 add();
                                 increaseItemByOneamount(selectedSupplier!.s_id);
+                                increaseItemByOne(selectedProduct!.p_id);
+                                increaseItemByOnewarehouse(selectedCategory!.c_id);
                                 print(" it is $currentPurchaseCount");
                               }
                             }
@@ -1550,10 +1628,20 @@ class CylinderModel {
   int get hashCode => cy_id.hashCode;
 }
 
+class ProductModel {
+  String p_id;
+  String p_name;
+  double amount;
 
+  ProductModel(this.p_id, this.p_name,this.amount);
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is ProductModel &&
+              runtimeType == other.runtimeType &&
+              p_id == other.p_id;
 
-
-
-
-
+  @override
+  int get hashCode => p_id.hashCode;
+}
