@@ -4,6 +4,18 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/home/drawer.dart';
 import 'package:pos/items/create_category.dart';
+import 'package:pos/report/Category_report.dart';
+import 'package:pos/report/brands_report.dart';
+import 'package:pos/report/discount_report.dart';
+import 'package:pos/report/expense_report.dart';
+import 'package:pos/report/product_report.dart';
+import 'package:pos/report/purchases/purchase_report.dart';
+import 'package:pos/report/purchases/supplier_report.dart';
+import 'package:pos/report/purchases/supplier_statement_report.dart';
+import 'package:pos/report/sales/customer_report.dart';
+import 'package:pos/report/sales/customer_statement.dart';
+import 'package:pos/report/sales/sales_report.dart';
+import 'package:pos/report/taxes_report.dart';
 import 'package:pos/user/edit_profile.dart';
 
 import '../splashScreens/loginout.dart';
@@ -129,7 +141,11 @@ class _ReportState extends State<Report> {
                  ),
                ),
                InkWell(
-                 onTap: (){},
+                 onTap: (){
+                   Navigator.push(context,
+                       MaterialPageRoute(builder: (context) => Sales_Report()));
+
+                 },
                  child: Container(
                    height: 40,
                    width: 160,
@@ -166,7 +182,11 @@ class _ReportState extends State<Report> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Purchase_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -327,7 +347,14 @@ class _ReportState extends State<Report> {
                   ),
                 ),
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                Customer_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -364,7 +391,14 @@ class _ReportState extends State<Report> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                Supplier_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -393,7 +427,11 @@ class _ReportState extends State<Report> {
                   ),
                 ),
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Customer_statement_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -430,7 +468,11 @@ class _ReportState extends State<Report> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Supplier_statement_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -459,7 +501,11 @@ class _ReportState extends State<Report> {
                   ),
                 ),
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Product_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -496,7 +542,10 @@ class _ReportState extends State<Report> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Category_Report()));
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -525,7 +574,11 @@ class _ReportState extends State<Report> {
                   ),
                 ),
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Brand_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -562,7 +615,11 @@ class _ReportState extends State<Report> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Taxes_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -591,7 +648,11 @@ class _ReportState extends State<Report> {
                   ),
                 ),
                 InkWell(
-                  onTap: (){},
+                  onTap: (){
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Discount_Report()));
+
+                  },
                   child: Container(
                     height: 40,
                     width: 160,
@@ -630,7 +691,12 @@ class _ReportState extends State<Report> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   InkWell(
-                    onTap: (){},
+                    onTap: (){
+                      Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => Expense_Report()));
+
+
+                    },
                     child: Container(
                       height: 40,
                       width: 160,

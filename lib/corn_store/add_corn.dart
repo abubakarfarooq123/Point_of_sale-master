@@ -73,7 +73,44 @@ class _Add_CornState extends State<Add_Corn>
 
 
 
-double lastvalue =0.0;
+  Future<void> increaseItemByOneInvoice(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('customer')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['invoices'];
+
+      print("CurrentValue $currentValue");
+
+      int? parsedValue = int.tryParse(currentValue);
+      if (parsedValue != null) {
+        int incrementedValue = parsedValue + 1;
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+        // Now you can use the updatedValue as needed
+        await FirebaseFirestore.instance
+            .collection('customer')
+            .doc(itemId)
+            .update({'invoices': updatedValue});
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      // int incrementedValue = int.parse(currentValue) + 1;
+      //
+      // print("incrementedValue $incrementedValue");
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
+
+
+
+  double lastvalue =0.0;
 
   void assignGrandTotal() {
 
@@ -161,6 +198,39 @@ String bag="";
 
 
 
+  Future<void> increaseItemBytotalspend(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('customer')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['total_spend'];
+
+      print("CurrentValue $currentValue");
+
+
+      double enteredAmount = double.parse(currentValue);
+
+      double valueToSubtract = _result;
+
+      print("valueToSubtract valueToSubtract $valueToSubtract");
+
+      double incrementedValue = enteredAmount + valueToSubtract;
+
+      print("incrementedValue $incrementedValue");
+      String updatedValue = incrementedValue.toString();
+
+      await FirebaseFirestore.instance
+          .collection('customer')
+          .doc(itemId)
+          .update({'total_spend': updatedValue});
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
 
 
   Future<void> increaseItemByOne(String itemId) async {
@@ -241,6 +311,8 @@ String bag="";
 
 
 
+
+
   Future<String> getPreviousBalanceForCustomer(String customerId) async {
     String previousBalance = "";
 
@@ -256,6 +328,11 @@ String bag="";
 
     return previousBalance;
   }
+
+
+
+
+
 
   add(String customerId)  async{
     double totalQuantity = calculateTotalQuantity();
@@ -285,7 +362,7 @@ String bag="";
 
     docRef.set({
       'id': brandId,
-      'item': selectedProduct!.p_name,
+      'Item': selectedProduct!.p_name,
       'count': selectedItemCount,
       'warehouse': selectedCategory!.c_title,
       'purchase': currentPurchaseCount,
@@ -295,7 +372,7 @@ String bag="";
       'price': _textEditingController.text,
       'paid': amountPaidController.text,
       'remaining': lastvalue,
-      'total_quantity':totalQuantity,
+      'Quantity':totalQuantity,
       'grand': _result,
       'bag':bag,
       'previous': previousBalanceString,
@@ -323,6 +400,19 @@ String bag="";
     );
   }
   CategoryModel? selectedCategory;
+
+
+  void removeDataRow(int index) {
+    if (index >= 0 && index < selectedProducts.length) {
+      setState(() {
+        selectedProducts.removeAt(index); // Remove the row at the specified index
+        TextEditingController? controller = quantityControllers.remove(index);
+        controller?.clear(); // Clear the text in the TextField
+      });
+    }
+  }
+
+
 
 
   @override
@@ -948,21 +1038,19 @@ String bag="";
                               });
                             },
                             onEditingComplete: () {
-                              addNewRowWithSameProduct(); // Call the function to add a new row
-                            },
+                              addNewRowWithSameProduct(); // Add a new row immediately
+                              },
                             keyboardType: TextInputType.number,
-                            controller: quantityControllers[
-                                index], // Use the corresponding controller
+                            controller: quantityControllers[index],
+
                           )),
                           DataCell(IconButton(
                             icon: Icon(Icons.clear),
                             onPressed: () {
-                              setState(() {
-                                selectedProducts.remove(
-                                    product); // Remove the selected product from the list
-                              });
+                              removeDataRow(index); // Remove the selected row
                             },
                           )),
+
                         ]);
                       }).toList()
                         ..add(
@@ -1113,7 +1201,7 @@ String bag="";
                           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          "$_result",
+                          "${_result.toStringAsFixed(2)}",
                           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -1221,7 +1309,7 @@ String bag="";
                                   // Display error message for missing warehouse selection
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text("Please select a Supplier."),
+                                      content: Text("Please select a Customer."),
                                       duration: Duration(seconds: 2),
                                       behavior: SnackBarBehavior.fixed,
                                     ),
@@ -1236,6 +1324,9 @@ String bag="";
                                   add(selectedSupplier!.s_id);
                                   increaseItemByOne(selectedProduct!.p_id);
                                   increaseItemByOnewarehouse(selectedCategory!.c_id);
+                                  increaseItemBytotalspend(selectedSupplier!.s_id);
+                                  increaseItemByOneInvoice(selectedSupplier!.s_id);
+
                                   print(" it is $currentPurchaseCount");
                                 }
                               }

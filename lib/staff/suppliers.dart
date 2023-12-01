@@ -8,6 +8,7 @@ import 'package:pos/staff/add_suppliers.dart';
 import 'package:pos/user/edit_profile.dart';
 import '../splashScreens/loginout.dart';
 import 'add_customers.dart';
+import 'package:intl/intl.dart';
 
 enum MenuItem {
   item1,
@@ -30,6 +31,8 @@ class _SuppliersState extends State<Suppliers> {
   }
 
 
+
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<Object?> getValuesFromFirebase() async {
@@ -43,8 +46,8 @@ class _SuppliersState extends State<Suppliers> {
     return {}; // Default empty map if the document doesn't exist
   }
 
-  int activeCustomerCount = 0;
-  int deletedCustomerCount = 0;
+  // int activeCustomerCount = 0;
+  // int deletedCustomerCount = 0;
   bool isisRowSelected = false;
   int selectedRowIndex = -1; // Track the index of the selected row
 
@@ -79,11 +82,57 @@ class _SuppliersState extends State<Suppliers> {
   final commentController = TextEditingController();
 
 
+  String calculateTotalSpend(List<DocumentSnapshot> data) {
+    double totalSpend = 0.0;
+    for (final document in data) {
+      Map<String, dynamic> employeeData = document.data() as Map<String, dynamic>;
+      totalSpend += double.parse(employeeData['total_paid']);
+    }
+    return totalSpend.toStringAsFixed(1);
+  }
 
+  String calculateTotalInvoices(List<DocumentSnapshot> data) {
+    int totalInvoices = 0;
+    for (final document in data) {
+      Map<String, dynamic> employeeData = document.data() as Map<String, dynamic>;
+      totalInvoices += int.parse(employeeData['purchase']);
+    }
+    return totalInvoices.toString();
+  }
+
+
+
+  Future<List<QueryDocumentSnapshot>> getDeletedCustomers() async {
+    // Query Firestore for deleted customers
+    QuerySnapshot querySnapshot = await firestore
+        .collection('supplier')
+        .where('isDeleted', isEqualTo: true)
+        .get();
+
+    // Return the list of deleted customer documents
+    return querySnapshot.docs;
+  }
+
+  String calculateTotalBalanceDue(List<DocumentSnapshot> data) {
+    double totalBalanceDue = 0.0;
+    for (final document in data) {
+      Map<String, dynamic> employeeData = document.data() as Map<String, dynamic>;
+      totalBalanceDue += double.parse(employeeData['previous']);
+    }
+
+    // Check if totalBalanceDue is zero or negative
+    if (totalBalanceDue <= 0) {
+      return '0.00'; // Display zero as a string with two decimal places
+    } else {
+      return totalBalanceDue.toStringAsFixed(2);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    fetchCustomerData(); // Fetch initial data
+
     // Call a function to listen for new customer additions
     getValuesFromFirebase().then((values) {
       setState(() {
@@ -107,58 +156,101 @@ class _SuppliersState extends State<Suppliers> {
         // Update other controller values as needed
       });
     });
-    listenForNewCustomers();
+    // listenForNewCustomers();
   }
 
   @override
 
-  void listenForNewCustomers() async {
-    // Get the initial list of documents
-    var initialSnapshot = await firestore.collection('supplier').get();
-    activeCustomerCount = initialSnapshot.docs.length;
-
-    // Save the initial snapshot document IDs to compare with new snapshots
-    List<String> previousSnapshotIds = initialSnapshot.docs.map((doc) => doc.id).toList();
-
-    firestore.collection('supplier').snapshots().listen((snapshot) {
-      // Get the current list of documents
-      List<DocumentSnapshot> currentSnapshot = snapshot.docs;
-
-      // Calculate the deleted supplier count
-      int deletedCount = 0;
-      for (var id in previousSnapshotIds) {
-        if (!currentSnapshot.any((doc) => doc.id == id)) {
-          deletedCount++;
-        }
-      }
-
-      // Update the deleted supplier count and active customer count
-      setState(() {
-        deletedCustomerCount = deletedCount;
-        activeCustomerCount = currentSnapshot.length;
-      });
-
-      // Update the previous snapshot document IDs for the next iteration
-      previousSnapshotIds = currentSnapshot.map((doc) => doc.id).toList();
-    });
-  }
-
-
+  // void listenForNewCustomers() async {
+  //   // Get the initial list of documents
+  //   var initialSnapshot = await firestore.collection('supplier').get();
+  //   activeCustomerCount = initialSnapshot.docs.length;
   //
-  // void deleteCustomer(String customerId) {
-  //   firestore.collection('supplier').doc(customerId).delete().then((value) {
-  //     // Customer deleted successfully, reduce the active customer count by 1
+  //   // Save the initial snapshot document IDs to compare with new snapshots
+  //   List<String> previousSnapshotIds = initialSnapshot.docs.map((doc) => doc.id).toList();
+  //
+  //   firestore.collection('supplier').snapshots().listen((snapshot) {
+  //     // Get the current list of documents
+  //     List<DocumentSnapshot> currentSnapshot = snapshot.docs;
+  //
+  //     // Calculate the deleted supplier count
+  //     int deletedCount = 0;
+  //     for (var id in previousSnapshotIds) {
+  //       if (!currentSnapshot.any((doc) => doc.id == id)) {
+  //         deletedCount++;
+  //       }
+  //     }
+  //
+  //     // Update the deleted supplier count and active customer count
   //     setState(() {
-  //       activeCustomerCount--;
-  //       deletedCustomerCount++;
+  //       deletedCustomerCount = deletedCount;
+  //       activeCustomerCount = currentSnapshot.length;
   //     });
-  //   }).catchError((error) {
-  //     // Handle any errors that occur during deletion
-  //     print('Error deleting customer: $error');
+  //
+  //     // Update the previous snapshot document IDs for the next iteration
+  //     previousSnapshotIds = currentSnapshot.map((doc) => doc.id).toList();
   //   });
   // }
 
+
+  var setvalue3;
+
   double duesAmount = 0.0;
+
+
+  TextEditingController _purchasedateController = TextEditingController();
+  TextEditingController _amountController = TextEditingController();
+  TextEditingController _notesController = TextEditingController();
+
+
+  List<String> payment = ['Cash', 'Check', 'Debit', 'Bank', 'Due'];
+  String selected3 = '';
+
+  List<String> mode = ['Paying', 'Receiving'];
+  String selected4 = '';
+  var setvalue4;
+
+  final TextEditingController _searchController = TextEditingController();
+
+  List<QueryDocumentSnapshot> data = [];
+  List<QueryDocumentSnapshot> filteredData = [];
+
+// Function to filter data based on name and phone number
+  Future<void> fetchCustomerData() async {
+    QuerySnapshot snapshot = await firestore.collection('supplier').get();
+    setState(() {
+      data = snapshot.docs;
+      filteredData = data; // Initialize filteredData with the initial data
+    });
+  }
+
+  void filterData(String query) {
+    setState(() {
+      filteredData = data.where((item) {
+        String name = item['name'].toString().toLowerCase();
+        String phone = item['phone'].toString().toLowerCase();
+        query = query.toLowerCase();
+
+        return name.contains(query) || phone.contains(query);
+      }).toList();
+    });
+  }
+
+  String calculateTotalBalancePay(List<DocumentSnapshot> data) {
+    double totalBalanceDue = 0.0;
+    for (final document in data) {
+      Map<String, dynamic> employeeData =
+      document.data() as Map<String, dynamic>;
+      double previousValue = double.parse(employeeData['previous']);
+
+      if (previousValue < 0) {
+        totalBalanceDue += previousValue.abs();
+      }
+    }
+    return totalBalanceDue.toStringAsFixed(2);
+  }
+
+
 
   void listenForCustomers() {
     firestore.collection('supplier').doc().get().then((snapshot) {
@@ -172,6 +264,58 @@ class _SuppliersState extends State<Suppliers> {
 
   @override
   Widget build(BuildContext context) {
+    List<QueryDocumentSnapshot> validData = filteredData.where((customerData) {
+      Map<String, dynamic>? data = customerData.data() as Map<String, dynamic>?;
+      return data != null && (!data.containsKey('isDeleted') || data['isDeleted'] == false);
+    }).toList();
+
+    List<DataRow> rows = List<DataRow>.generate(validData.length, (index) {
+      QueryDocumentSnapshot employeeData = validData[index];
+      String name = employeeData['name'];
+      String email = employeeData['email'];
+      String phone = employeeData['phone'];
+      String city1 = employeeData['city'];
+      String country1 = employeeData['country'];
+      String agency1 = employeeData['agency'];
+      String company = employeeData['company'];
+      String spend = employeeData['total_paid'];
+      String inovices = employeeData['purchase'];
+      String due = employeeData['previous'];
+
+      return DataRow.byIndex(
+        index: index,
+        selected: selectedRowIndex == index,
+        onSelectChanged: (selected) {
+          setState(() {
+            if (selected!) {
+              selectedRowIndex = index;
+            } else {
+              selectedRowIndex = -1;
+            }
+          });
+        },
+        cells: [
+          DataCell(Text(name)),
+          DataCell(Text(phone)),
+          DataCell(Text(email)),
+          DataCell(Text(city1)),
+          DataCell(Text(country1)),
+          DataCell(Text(agency1)),
+          DataCell(Text(company)),
+          DataCell(Text(spend)),
+          DataCell(Text(inovices)),
+          DataCell(Text(due)),
+        ],
+      );
+    });
+
+    int activeCustomerCount = validData.length;
+
+    int deletedCustomerCount = data.where((customerData) {
+      Map<String, dynamic>? data = customerData.data() as Map<String, dynamic>?;
+      return data != null && data['isDeleted'] == true;
+    }).length;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -257,11 +401,16 @@ class _SuppliersState extends State<Suppliers> {
                       child: Row(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.only(left: 14, top: 20, bottom: 14),
+                            padding: const EdgeInsets.only(
+                                left: 14, top: 20, bottom: 14),
                             child: Container(
                               height: 50,
                               width: 230,
                               child: TextField(
+                                controller: _searchController,
+                                onChanged: (query) {
+                                  filterData(query);
+                                },
                                 decoration: InputDecoration(
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(40),
@@ -284,6 +433,9 @@ class _SuppliersState extends State<Suppliers> {
                           Padding(
                             padding: const EdgeInsets.only(left: 10),
                             child: InkWell(
+                              onTap: (){
+                                showInstallmentDialog(context, data[selectedRowIndex]);
+                              },
                               child: Container(
                                 height: 40,
                                 width: 40,
@@ -463,59 +615,70 @@ class _SuppliersState extends State<Suppliers> {
                               ],
                             ),
                           ),
-                          Container(
-                            height: 140,
-                            width: 140,
-                            decoration: BoxDecoration(
-                              color: Colors.pinkAccent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 30, top: 50),
-                                      child: Icon(
-                                        FontAwesomeIcons.handshakeSlash,
-                                        color: Colors.white,
-                                        size: 30,
+                      InkWell(
+                        onTap: () async {
+                          // Get the deleted customer data
+                          List<QueryDocumentSnapshot> deletedCustomers =
+                          await getDeletedCustomers();
+
+                          // Call the function to show the dialog with the deleted customer data
+                          showRecoverDeletedCustomersDialog(
+                              context, deletedCustomers);
+                        },
+                            child: Container(
+                              height: 140,
+                              width: 140,
+                              decoration: BoxDecoration(
+                                color: Colors.pinkAccent,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            left: 30, top: 50),
+                                        child: Icon(
+                                          FontAwesomeIcons.handshakeSlash,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
                                       ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          top: 50, left: 20),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                                  deletedCustomerCount.toString(),
-                                            style: GoogleFonts.roboto(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 26),
-                                          ),
-                                        ],
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            top: 50, left: 20),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              deletedCustomerCount.toString(),
+                                              style: GoogleFonts.roboto(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 26),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 7, top: 20, right: 10),
-                                  child: Text(
-                                    "Delete Suppliers",
-                                    style: GoogleFonts.roboto(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15),
+                                    ],
                                   ),
-                                ),
-                              ],
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 7, top: 20, right: 10),
+                                    child: Text(
+                                      "Deleted Suppliers",
+                                      style: GoogleFonts.roboto(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -556,7 +719,7 @@ class _SuppliersState extends State<Suppliers> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            "Rs 1123.41",
+                                            calculateTotalBalanceDue(data),
                                             style: GoogleFonts.roboto(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -611,7 +774,7 @@ class _SuppliersState extends State<Suppliers> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            "Rs 11333.41",
+                                            calculateTotalBalancePay(data),
                                             style: GoogleFonts.roboto(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -751,46 +914,42 @@ class _SuppliersState extends State<Suppliers> {
                               ),
                             ),
                           ],
-                          rows: List<DataRow>.generate(data.length, (index) {
-                            Map<String, dynamic> employeeData =
-                            data[index].data() as Map<String, dynamic>;
-                            String name = employeeData['name'];
-                            String email = employeeData['email'];
-                            String phone = employeeData['phone'];
-                            String city1 = employeeData['city'];
-                            String country1 = employeeData['country'];
-                            String agency1 = employeeData['agency'];
-                            String company = employeeData['company'];
-                            String spend = employeeData['total_paid'];
-                            String inovices = employeeData['purchase'];
-                            String due = employeeData['previous'];
-
-                            return DataRow.byIndex(
-                              index: index,
-                              selected: selectedRowIndex == index,
-                              onSelectChanged: (selected) {
-                                setState(() {
-                                  if (selected!) {
-                                    selectedRowIndex = index;
-                                  } else {
-                                    selectedRowIndex = -1;
-                                  }
-                                });
-                              },
-                              cells: [
-                                DataCell(Text(name)),
-                                DataCell(Text(phone)),
-                                DataCell(Text(email)),
-                                DataCell(Text(city1)),
-                                DataCell(Text(country1)),
-                                DataCell(Text(agency1)),
-                                DataCell(Text(company)),
-                                DataCell(Text(spend)),
-                                DataCell(Text(inovices)),
-                                DataCell(Text(due)),
-                              ],
-                            );
-                          }),
+                          rows: rows
+                            ..add(
+                              DataRow(
+                                color: MaterialStateColor.resolveWith((states) {
+                                  return Colors.grey.withOpacity(
+                                      0.5); // Set the background color to grey for the total quantity row
+                                }),
+                                cells: [
+                                  DataCell(Text('Total:')),
+                                  DataCell(Text('')), // An empty cell for spacing
+                                  DataCell(Text('')), // An empty cell for spacing
+                                  DataCell(Text('')), // An empty cell for spacing
+                                  DataCell(Text('')), // An empty cell for spacing
+                                  DataCell(Text('')), // An empty cell for spacing
+                                  DataCell(Text('')), // An empty cell for spacing
+                                  DataCell(
+                                    Text(
+                                      calculateTotalSpend(data),
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      calculateTotalInvoices(data),
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      calculateTotalBalanceDue(data),
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           dataRowColor: MaterialStateColor.resolveWith((states) {
                             if (states.contains(MaterialState.selected)) {
                               return Colors.grey.withOpacity(0.5);
@@ -823,7 +982,7 @@ class _SuppliersState extends State<Suppliers> {
       ),
     );
   }
-  void showDeleteConfirmationDialog(BuildContext context, List<dynamic> data, int selectedRowIndex) {
+  void showDeleteConfirmationDialog(BuildContext context, List<dynamic> data, int selectedRowIndex) async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -840,35 +999,207 @@ class _SuppliersState extends State<Suppliers> {
             ),
             TextButton(
               onPressed: selectedRowIndex != -1
-                  ? () {
+                  ? () async {
                 // Perform the action for the delete button
-                Map<String, dynamic> selectedEmployeeData =
+                Map<String, dynamic> selectedCustomerData =
                 data[selectedRowIndex].data() as Map<String, dynamic>;
-                String selectedEmployeeId = selectedEmployeeData['id'];
+                String selectedCustomerId = selectedCustomerData['id'];
+                double previousBalance = double.parse(selectedCustomerData['previous']) ?? 0;
 
-                // Delete the selected row data from Firebase
-                firestore.collection('supplier').doc(selectedEmployeeId).delete().then((value) {
-                  // Row data deleted successfully
-                  setState(() {
-                    data.removeAt(selectedRowIndex); // Remove the selected row from the local data list
-                    selectedRowIndex = -1; // Reset the selected row index
-                  });
+                if (previousBalance == 0) {
+                  try {
+                    // Set a flag to mark the record as deleted
+                    await firestore.collection('supplier').doc(selectedCustomerId).update({
+                      'isDeleted': true,
+                    });
 
-                  // Close the dialog
-                  Navigator.of(context).pop();
-                }).catchError((error) {
-                  // Error occurred while deleting row data
-                  print('Error deleting row data: $error');
-                });
+                    // Update the local data list
+                    setState(() {
+                      data.removeAt(selectedRowIndex);
+                      selectedRowIndex = -1;
+                    });
+
+                    // Close the dialog
+                    Navigator.pushReplacement(
+                        context, MaterialPageRoute(builder: (context) => Suppliers()));
+                  } catch (error) {
+                    // Handle the error
+                    print('Error marking record as deleted: $error');
+                  }
+                } else {
+                  // Customer has a non-zero previous balance, show an alert
+                  Navigator.of(context).pop(); // Close the current dialog
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text('Cannot Delete'),
+                        content: Text('Supplier has a non-zero previous balance and cannot be deleted.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop(); // Close the alert dialog
+                            },
+                            child: Text('OK'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
               }
                   : null,
               child: Text('Delete'),
             ),
-
           ],
         );
       },
     );
+  }
+
+
+
+  Future<void> deleteCustomerFromFirebase(QueryDocumentSnapshot customerDocument) async {
+    try {
+      // Assuming you have a reference to the Firestore instance
+      await FirebaseFirestore.instance
+          .collection('supplier') // Replace 'customers' with your collection name
+          .doc(customerDocument.id) // Get the document ID of the customer
+          .delete();
+
+      Navigator.of(context).pop();
+      // Optionally, you can also perform any additional cleanup or state updates here
+    } catch (e) {
+      print('Error deleting customer: $e');
+      // Handle any errors here
+    }
+  }
+
+
+  void showRecoverDeletedCustomersDialog(BuildContext context, List<dynamic> deletedCustomers) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Deleted Suppliers'),
+          content: Container(
+            height: 300, // Adjust the height as needed
+            width: 300, // Adjust the width as needed
+            child: ListView.builder(
+              itemCount: deletedCustomers.length,
+              itemBuilder: (context, index) {
+                Map<String, dynamic> deletedCustomerData =
+                deletedCustomers[index].data() as Map<String, dynamic>;
+                String name = deletedCustomerData['name'];
+                return Column(
+                  children: [
+                    ListTile(
+                      title: Text(name),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min, // To make the items inline
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              recoverDeletedCustomer(deletedCustomers[index]);
+                              Navigator.pushReplacement(
+                                  context, MaterialPageRoute(builder: (context) => Suppliers()));
+                            },
+                            child: Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(child: Icon(Icons.refresh_sharp, color: Colors.white))),
+                          ),
+                          SizedBox(width: 20), // Add some spacing between the icons
+                          InkWell(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: Text('Confirm Delete'),
+                                    content: Text('Are you sure you want to delete $name permanently?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () async {
+                                          // Perform the delete action from Firebase
+                                          await deleteCustomerFromFirebase(deletedCustomers[index]);
+
+                                          // Close the dialog
+                                          Navigator.of(context).pop();
+
+                                          // Optionally, you can also refresh your list after deleting
+                                          // Call the function to reload your data or update your state
+                                          // reloadCustomerList();
+                                        },
+                                        child: Text('Delete'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.of(context).pop(); // Close the dialog
+                                        },
+                                        child: Text('Cancel'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                            child: Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.8),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(child: Icon(Icons.delete, color: Colors.white))),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    Divider(
+                      thickness: 1,
+                      height: 1,
+                      color: Colors.grey.withOpacity(0.4),
+                    ), // Add a Divider widget after each ListTile
+                  ],
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Close'),
+            ),
+          ],
+        );
+
+      },
+    );
+  }
+
+// Example function to recover a deleted customer
+  void recoverDeletedCustomer(QueryDocumentSnapshot customerSnapshot) {
+    String customerId = customerSnapshot['id'];
+
+    // Perform the recovery logic, e.g., update the 'isDeleted' flag in Firebase
+    firestore.collection('supplier').doc(customerId).update({
+      'isDeleted': false,
+    }).then((value) {
+      // Customer recovered successfully
+      // You can also refresh the data list or take other actions as needed
+    }).catchError((error) {
+      // Handle error if recovery fails
+    });
   }
   void showEditProfileDialog(BuildContext context, dynamic customerData) {
 
@@ -1268,6 +1599,160 @@ class _SuppliersState extends State<Suppliers> {
       },
     );
   }
+
+
+  Widget buildTransactionsTab(String customerId) {
+    Future<List<DocumentSnapshot>> fetchSalesDataForCustomer(
+        String customerId) async {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('Purchase')
+          .where('supplier', isEqualTo: customerId)
+          .get();
+
+      return querySnapshot.docs;
+    }
+
+    Future<List<DocumentSnapshot>> fetchPaymentForCustomer(
+        String customerId) async {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('supplier')
+          .where('name', isEqualTo: customerId)
+          .get();
+
+      return querySnapshot.docs;
+    }
+
+    return FutureBuilder<List<List<DocumentSnapshot>>>(
+      future: Future.wait([
+        fetchSalesDataForCustomer(customerId),
+        fetchPaymentForCustomer(customerId),
+      ]),
+      builder: (context, snapshots) {
+        if (snapshots.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        } else if (snapshots.hasError || snapshots.data == null) {
+          return Center(child: Text('No Sales and Payments Data Available'));
+        } else {
+          List<DocumentSnapshot> salesData = snapshots.data![0];
+          List<DocumentSnapshot> paymentsData = snapshots.data![1];
+
+          List<Map<String, dynamic>> tableData = [];
+
+          salesData.forEach((transactionData) {
+            var transactionAmount = transactionData['grand'];
+            var transactionDate = transactionData['pickdate'];
+            var tenderedAmount = transactionData['tender'];
+
+            tableData.add({
+              'Date': transactionDate,
+              'Sale': 'Rs. $transactionAmount',
+              'Get': '',
+              'Note': '',
+              'Gave': '',
+            });
+
+            tableData.add({
+              'Date': transactionDate,
+              'Sale': '',
+              'Get': 'Rs. $tenderedAmount',
+              'Note': '',
+              'Gave': '',
+            });
+
+            paymentsData.forEach((paymentdata) {
+              for (var reverseEntry in paymentdata['receive']) {
+                tableData.add({
+                  'Date': reverseEntry['date'].toString(),
+                  'Sale': '',
+                  'Get': reverseEntry['amount'].toString(),
+                  'Note': reverseEntry['notes'].toString(),
+                  'Gave': '',
+                });
+              }
+
+              for (var reverseEntry in paymentdata['reverse']) {
+                tableData.add({
+                  'Date': reverseEntry['date'].toString(),
+                  'Sale': '',
+                  'Get': '',
+                  'Note': reverseEntry['notes'].toString(),
+                  'Gave': '- ${reverseEntry['amount'].toString()}',
+                });
+              }
+            });
+          });
+
+
+          return SingleChildScrollView(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.blue),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  headingRowColor:
+                  MaterialStateColor.resolveWith((states) => Colors.blue),
+                  dataRowColor:
+                  MaterialStateColor.resolveWith((states) => Colors.white),
+                  columns: [
+                    DataColumn(
+                      label: Text('Date', style: TextStyle(color: Colors.white)),
+                    ),
+                    DataColumn(
+                      label: Text('Sale', style: TextStyle(color: Colors.white)),
+                    ),
+                    DataColumn(
+                      label: Text('Get', style: TextStyle(color: Colors.white)),
+                    ),
+                    DataColumn(
+                      label: Text('Gave', style: TextStyle(color: Colors.white)),
+                    ),
+                    DataColumn(
+                      label: Text('Note', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                  rows: tableData.map((rowData) {
+                    return DataRow(cells: [
+                      DataCell(Text(rowData['Date'])),
+                      DataCell(
+                        Text(
+                          rowData['Sale'],
+                          style: TextStyle(
+                            color:
+                            rowData['Sale'].startsWith('-') ? Colors.red : Colors.black,
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          rowData['Get'],
+                          style: TextStyle(
+                            color: rowData['Get'].startsWith('-') ? Colors.red : Colors.green,
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          rowData['Gave'],
+                          style: TextStyle(
+                            color:
+                            rowData['Gave'].startsWith('-') ? Colors.red : Colors.black,
+                          ),
+                        ),
+                      ),
+                      DataCell(Text(rowData['Note'])),
+                    ]);
+                  }).toList(),
+                ),
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+
   void showEditProfileDetailDialog(BuildContext context, dynamic customerData) {
 
     addressController.text = customerData['address']?.toString() ?? '';
@@ -1284,383 +1769,927 @@ class _SuppliersState extends State<Suppliers> {
     stateController.text = customerData['state']?.toString() ?? '';
     paid = customerData['total_paid']?.toString() ?? '';
     zipcodeController.text = customerData['zip']?.toString() ?? '';
+    String spend =  customerData['previous']?.toString() ?? '';
 
+    List<String> reverseList = [];
+    List<dynamic> reverseData = customerData['receive'];
+    if (reverseData != null) {
+      for (var reverse in reverseData) {
+        reverseList.add(reverse.toString());
+      }
+    }
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        // Implement your edit profile dialog here
         return SingleChildScrollView(
-          child: AlertDialog(
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${nameController.text} Profile',style: GoogleFonts.roboto(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),),
-                SizedBox(
-                  width: 63,
-                ),
-                IconButton(
-                    onPressed: (){
-                      Navigator.of(context).pop();
-                    },
-                    icon: Icon(Icons.clear,size: 32,))
-              ],
-            ),
-            content: Column(
-              children: [
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: Colors.grey.withOpacity(0.4),
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 25,
-                    ),
-                    Text(nameController.text,style: GoogleFonts.roboto(
-                      color: Colors.black,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    ),
-                    SizedBox(
-                      width: 45,
-                    ),
-                    Container(
-                      height: 40,
-                      width: 100,
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: Colors.greenAccent.shade200
-                      ),
-                      child: Center(
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                            ),
-                            Icon(Icons.fiber_manual_record,color: Colors.green,size: 18,),
-                            SizedBox(
-                              width: 10,
-                            ),
-                            Text("Active",style: GoogleFonts.roboto(
-                              color: Colors.green,
-                            ),),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  height: 15,
-                ),
-                Container(
-                  height: 360,
-                  width: 320,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.withOpacity(0.4),width: 1),
+          child: Container(
+            height: 1200,
+            child: AlertDialog(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${nameController.text} Profile',style: GoogleFonts.roboto(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),),
+                  SizedBox(
+                    width: 45,
                   ),
-                  child: Column(
+                  IconButton(
+                      onPressed: (){
+                        Navigator.of(context).pop();
+                      },
+                      icon: Icon(Icons.clear,size: 32,))
+                ],
+              ),
+              content: Column(
+                children: [
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Colors.grey.withOpacity(0.4),
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Row(
                     children: [
                       SizedBox(
-                        height: 10,
+                        width: 25,
                       ),
-                      Container(
-                        height: 30,
-                        width: 280,
-                        child: Stack(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                            ),
-                            Positioned(
-                              left: 10,
-                              child: Text("Phone :",style: GoogleFonts.roboto(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 55,
-                            ),
-                            Positioned(
-                              right: 10,
-                              child: Text(phoneController.text,
-                                style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      Text(nameController.text,style: GoogleFonts.roboto(
+                        color: Colors.black,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.grey.withOpacity(0.4),
                       ),
                       SizedBox(
-                        height: 10,
+                        width: 45,
                       ),
                       Container(
-                        height: 30,
-                        width: 280,
-                        child: Stack(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                            ),
-                            Positioned(
-                              left: 10,
-                              child: Text("Email :",style: GoogleFonts.roboto(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 55,
-                            ),
-                            Positioned(
-                              right: 10,
-                              child: Text(emailController.text,
-                                style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
+                        height: 40,
+                        width: 100,
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: Colors.greenAccent.shade200
                         ),
-                      ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.grey.withOpacity(0.4),
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      Container(
-                        height: 30,
-                        width: 280,
-                        child: Stack(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                            ),
-                            Positioned(
-                              left: 10,
-                              child: Text("Address :",style: GoogleFonts.roboto(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                        child: Center(
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 15,
                               ),
+                              Icon(Icons.fiber_manual_record,color: Colors.green,size: 18,),
+                              SizedBox(
+                                width: 10,
                               ),
-                            ),
-                            SizedBox(
-                              width: 55,
-                            ),
-                            Positioned(
-                              right: 10,
-                              child: Text(addressController.text,
-                                style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
+                              Text("Active",style: GoogleFonts.roboto(
+                                color: Colors.green,
+                              ),),
+                            ],
+                          ),
                         ),
-                      ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.grey.withOpacity(0.4),
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      Container(
-                        height: 30,
-                        width: 280,
-                        child: Stack(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                            ),
-                            Positioned(
-                              left: 10,
-                              child: Text("City :",style: GoogleFonts.roboto(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 55,
-                            ),
-                            Positioned(
-                              right: 10,
-                              child: Text(cityController.text,
-                                style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.grey.withOpacity(0.4),
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      Container(
-                        height: 30,
-                        width: 280,
-                        child: Stack(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                            ),
-                            Positioned(
-                              left: 10,
-                              child: Text("State :",style: GoogleFonts.roboto(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 55,
-                            ),
-                            Positioned(
-                              right: 10,
-                              child: Text(stateController.text,
-                                style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.grey.withOpacity(0.4),
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      Container(
-                        height: 30,
-                        width: 280,
-                        child: Stack(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                            ),
-                            Positioned(
-                              left: 10,
-                              child: Text("ZipCode :",style: GoogleFonts.roboto(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 55,
-                            ),
-                            Positioned(
-                              right: 10,
-                              child: Text(zipcodeController.text,
-                                style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.grey.withOpacity(0.4),
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      Container(
-                        height: 30,
-                        width: 280,
-                        child: Stack(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                            ),
-                            Positioned(
-                              left: 10,
-                              child: Text("Country :",style: GoogleFonts.roboto(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 55,
-                            ),
-                            Positioned(
-                              right: 10,
-                              child: Text(
-                                countryController.text,
-                                style: GoogleFonts.roboto(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.grey.withOpacity(0.4),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  SizedBox(
+                    height: 15,
+                  ),
+                  Container(
+                    height: 360,
+                    width: 320,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.withOpacity(0.4),width: 1),
+                    ),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          height: 30,
+                          width: 280,
+                          child: Stack(
+                            children: [
+                              SizedBox(
+                                width: 15,
+                              ),
+                              Positioned(
+                                left: 10,
+                                child: Text("Phone :",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 55,
+                              ),
+                              Positioned(
+                                right: 10,
+                                child: Text(phoneController.text,
+                                  style: GoogleFonts.roboto(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.grey.withOpacity(0.4),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          height: 30,
+                          width: 280,
+                          child: Stack(
+                            children: [
+                              SizedBox(
+                                width: 15,
+                              ),
+                              Positioned(
+                                left: 10,
+                                child: Text("Email :",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 55,
+                              ),
+                              Positioned(
+                                right: 10,
+                                child: Text(emailController.text,
+                                  style: GoogleFonts.roboto(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.grey.withOpacity(0.4),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          height: 30,
+                          width: 280,
+                          child: Stack(
+                            children: [
+                              SizedBox(
+                                width: 15,
+                              ),
+                              Positioned(
+                                left: 10,
+                                child: Text("Address :",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 55,
+                              ),
+                              Positioned(
+                                right: 10,
+                                child: Text(addressController.text,
+                                  style: GoogleFonts.roboto(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.grey.withOpacity(0.4),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          height: 30,
+                          width: 280,
+                          child: Stack(
+                            children: [
+                              SizedBox(
+                                width: 15,
+                              ),
+                              Positioned(
+                                left: 10,
+                                child: Text("City :",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 55,
+                              ),
+                              Positioned(
+                                right: 10,
+                                child: Text(cityController.text,
+                                  style: GoogleFonts.roboto(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.grey.withOpacity(0.4),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          height: 30,
+                          width: 280,
+                          child: Stack(
+                            children: [
+                              SizedBox(
+                                width: 15,
+                              ),
+                              Positioned(
+                                left: 10,
+                                child: Text("State :",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 55,
+                              ),
+                              Positioned(
+                                right: 10,
+                                child: Text(stateController.text,
+                                  style: GoogleFonts.roboto(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.grey.withOpacity(0.4),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          height: 30,
+                          width: 280,
+                          child: Stack(
+                            children: [
+                              SizedBox(
+                                width: 15,
+                              ),
+                              Positioned(
+                                left: 10,
+                                child: Text("ZipCode :",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 55,
+                              ),
+                              Positioned(
+                                right: 10,
+                                child: Text(zipcodeController.text,
+                                  style: GoogleFonts.roboto(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.grey.withOpacity(0.4),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          height: 30,
+                          width: 280,
+                          child: Stack(
+                            children: [
+                              SizedBox(
+                                width: 15,
+                              ),
+                              Positioned(
+                                left: 10,
+                                child: Text("Country :",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 55,
+                              ),
+                              Positioned(
+                                right: 10,
+                                child: Text(
+                                  countryController.text,
+                                  style: GoogleFonts.roboto(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.grey.withOpacity(0.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  SingleChildScrollView(
+                    child: Container(
+                        height: 300,
+                        child: buildTransactionsTab(customerData['name'] ?? '')),
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Container(
+                    height: 40,
+                    width: 320,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          left: 10,
+                          top: 12,
+                          child: Text(
+                            "Due Balance: ",style: GoogleFonts.roboto(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 40,
+                        ),
+                        Positioned(
+                          right: 10,
+                          top: 12,
+                          child: Text(
+                            "Rs. ${spend}",style: GoogleFonts.roboto(
+                            color: Colors.black,
+                            fontSize: 15,
+                          ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+  double reverse=0.0;
+  void showInstallmentDialog(BuildContext context, dynamic customerData) {
+
+    Future<void> increaseItemQuantity() async {
+      try {
+        DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+            .instance
+            .collection('supplier')
+            .doc(customerData['id'])
+            .get();
+       String previousVal = snapshot.data()!['previous'];
+       String totalVal = snapshot.data()!['total_paid'];
+
+        print("CurrentValue $previousVal");
+
+        double enteredAmount = double.parse(previousVal);
+        double mewwAmount = double.parse(totalVal);
+        if (enteredAmount != null) {
+          if(setvalue4 == 'Paying'){
+            double amount = double.parse(_amountController.text);
+            double newval = enteredAmount - amount;
+
+            double totalnewval= amount + mewwAmount;
+            String updatedtotalValue = totalnewval.toString();
+
+            String updatedValue = newval.toString();
+
+            dynamic existingReceive = snapshot.data()!['receive'];
+
+            List<dynamic> existingReceiveList = existingReceive is List ? List.from(existingReceive) : [];
+
+            Map<String, dynamic> existingReceiveEntry = {
+              'date': _purchasedateController.text,
+              'notes': _notesController.text,
+              'amount': amount.toString(),
+              'previous': enteredAmount.toString(),
+            };
+
+            existingReceiveList.add(existingReceiveEntry);
+
+            await FirebaseFirestore.instance
+                .collection('supplier')
+                .doc(customerData['id'])
+                .update({'previous': updatedValue, 'total_paid':  updatedtotalValue,'receive': existingReceiveList,});
+          }
+          else if (setvalue4 == 'Receiving') {
+            double amount = double.parse(_amountController.text);
+            reverse = amount;
+            double newval = enteredAmount + amount;
+            String updatedValue = newval.toString();
+            String reverse1 = reverse.toString();
+
+            dynamic existingReverse = snapshot.data()!['reverse'];
+
+            List<dynamic> existingReverseList = existingReverse is List ? List.from(existingReverse) : [];
+
+            Map<String, dynamic> reverseEntry = {
+              'date': _purchasedateController.text,
+              'notes': _notesController.text,
+              'amount': reverse1,
+              'previous':enteredAmount.toString(),
+            };
+
+// Append the new reverse entry map to the list
+            existingReverseList.add(reverseEntry);
+
+            await FirebaseFirestore.instance
+                .collection('supplier')
+                .doc(customerData['id'])
+                .update({
+              'previous': updatedValue,
+              'receive': existingReverseList, // Update the "reverse" field with the new list
+            });
+          }
+          else{
+            print("Failder to add Value");
+          }
+        }
+        else {
+          print("Failed to parse the current value as an integer");
+        }
+
+        print('Item value incremented successfully.');
+      } catch (error) {
+
+        print('Item value incremented successfully.$error');
+      }
+    }
+
+
+
+    String spend='';
+
+    nameController.text = customerData['name'] ?? '';
+    emailController.text = customerData['email']?.toString() ?? '';
+    phoneController.text = customerData['phone'] ?? '';
+    // setvalue = customerData['gender']?.toString() ?? '';
+    cityController.text = customerData['city']?.toString() ?? '';
+    zipcodeController.text = customerData['zip']?.toString() ?? '';
+    countryController.text = customerData['country']?.toString() ?? '';
+    stateController.text = customerData['state']?.toString() ?? '';
+    spend = customerData['previous']?.toString() ?? '';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setState) {
+
+          return SingleChildScrollView(
+            child: AlertDialog(
+              title: Container(
+                width: 320,
+                height: 40,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 5,
+                      top: 10,
+                      child: Text('${nameController.text} Details',style: GoogleFonts.roboto(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),),
+                    ),
+                    SizedBox(
+                      width: 83,
+                    ),
+                    Positioned(
+                      right: 5,
+                      child: IconButton(
+                          onPressed: (){
+                            Navigator.of(context).pop();
+                          },
+                          icon: Icon(Icons.clear,size: 32,)),
+                    )
+                  ],
+                ),
+              ),
+              content: Column(
+                children: [
+                  Divider(
+                    height: 1,
+                    color: Colors.black45,
+                    thickness: 1,
+                  ),
+                  SizedBox(
+                    height: 15,
+                  ),
+                  Form(
+                    child: Column(
+                      children: [
+                        Container(
+                          alignment:Alignment.centerLeft,
+                          child: Text("Payment Date",style: GoogleFonts.roboto(
+                            color: Colors.black,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(14.0),
+                          child: TextFormField(
+                            readOnly: true,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            controller: _purchasedateController,
+                            onTap: () {
+                              showDatePicker(
+                                context: context,
+                                initialDate: _purchasedateController
+                                    .text.isEmpty
+                                    ? DateTime
+                                    .now() // Use current date if the field is empty
+                                    : DateFormat('dd/MM/yyyy').parse(
+                                    _purchasedateController
+                                        .text), // Parse existing value
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100),
+                              ).then((date) {
+                                if (date != null) {
+                                  setState(() {
+                                    final formattedDate =
+                                    DateFormat('dd/MM/yyyy').format(date);
+                                    _purchasedateController.text =
+                                        formattedDate;
+                                  });
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                        Container(
+                          alignment:Alignment.centerLeft,
+                          child: Text("Payment Method",style: GoogleFonts.roboto(
+                            color: Colors.black,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Container(
+                            child: Column(
+                              children: <Widget>[
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 208,
+                                      height: 60,
+                                      padding:
+                                      EdgeInsets.only(left: 16, right: 16),
+                                      decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: Colors.grey, width: 1),
+                                          borderRadius:
+                                          BorderRadius.circular(15)),
+                                      child: DropdownButton(
+                                        hint: Padding(
+                                          padding: const EdgeInsets.only(
+                                              top: 10, left: 15),
+                                          child: Text(
+                                            'Select Method',
+                                            style: TextStyle(
+                                              color: Colors.black54,
+                                            ),
+                                          ),
+                                        ),
+                                        isExpanded: true,
+                                        icon: Visibility(
+                                            visible: false,
+                                            child: Icon(Icons.arrow_downward)),
+                                        underline: SizedBox(),
+                                        value: setvalue3,
+                                        onChanged: (newValue) {
+                                          setState(() {
+                                            setvalue3 = newValue;
+                                          });
+                                        },
+                                        items: payment.map((String value) {
+                                          return new DropdownMenuItem<String>(
+                                            value: value,
+                                            child: new Text(value),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  selected3,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20.0,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Container(
+                          alignment:Alignment.centerLeft,
+                          child: Text("Payment Mode",style: GoogleFonts.roboto(
+                            color: Colors.black,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Container(
+                            child: Column(
+                              children: <Widget>[
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 208,
+                                      height: 60,
+                                      padding:
+                                      EdgeInsets.only(left: 16, right: 16),
+                                      decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: Colors.grey, width: 1),
+                                          borderRadius:
+                                          BorderRadius.circular(15)),
+                                      child: DropdownButton(
+                                        hint: Padding(
+                                          padding: const EdgeInsets.only(
+                                              top: 10, left: 15),
+                                          child: Text(
+                                            'Select Mode',
+                                            style: TextStyle(
+                                              color: Colors.black54,
+                                            ),
+                                          ),
+                                        ),
+                                        isExpanded: true,
+                                        icon: Visibility(
+                                            visible: false,
+                                            child: Icon(Icons.arrow_downward)),
+                                        underline: SizedBox(),
+                                        value: setvalue4,
+                                        onChanged: (newValue) {
+                                          setState(() {
+                                            setvalue4 = newValue;
+                                          });
+                                        },
+                                        items: mode.map((String value) {
+                                          return new DropdownMenuItem<String>(
+                                            value: value,
+                                            child: new Text(value),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  selected4,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20.0,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Container(
+                          alignment:Alignment.centerLeft,
+                          child: Text("Recieving Amount",style: GoogleFonts.roboto(
+                            color: Colors.black,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              top: 10, right: 10),
+                          child: TextFormField(
+                            keyboardType: TextInputType.number,
+                            controller: _amountController,
+                            decoration: InputDecoration(
+                              hintText: 'Amount',
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Colors.grey, width: 1),
+                                borderRadius:
+                                BorderRadius.circular(15),
+                              ),
+                            ),
+                            onChanged: (value) {
+
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          height: 15,
+                        ),
+                        Container(
+                          alignment:Alignment.centerLeft,
+                          child: Text("Payment Notes",style: GoogleFonts.roboto(
+                            color: Colors.black,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              top: 10, right: 10),
+                          child: TextFormField(
+                            controller: _notesController,
+                            decoration: InputDecoration(
+                              hintText: 'Notes',
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Colors.grey, width: 1),
+                                borderRadius:
+                                BorderRadius.circular(15),
+                              ),
+                            ),
+                            onChanged: (value) {
+
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          height: 25,
+                        ),
+                        Container(
+                          height: 30,
+                          width: 320,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left:5,
+                                child: Text("Dues",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),),
+                              ),
+                              Positioned(
+                                right:5,
+                                child: Text("Rs. ${spend}",style: GoogleFonts.roboto(
+                                  color: Colors.black,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        Container(
+                          height: 100,
+                          width: 320,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                  left:5,
+                                  child: InkWell(
+                                    onTap: (){
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Container(
+                                      height: 40,
+                                      width: 100,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withOpacity(0.4),
+                                        borderRadius: BorderRadius.all(Radius.circular(20)),
+
+                                      ),
+                                      child: Center(
+                                        child: Text("Cancel",style: GoogleFonts.roboto(
+                                          color: Colors.black,
+                                        ),),
+                                      ),
+                                    ),
+                                  )
+                              ),
+                              Positioned(
+                                  right:5,
+                                  child: InkWell(
+                                    onTap: (){
+                                      increaseItemQuantity();
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Container(
+                                      height: 40,
+                                      width: 100,
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue,
+                                        borderRadius: BorderRadius.all(Radius.circular(20)),
+
+                                      ),
+                                      child: Center(
+                                        child: Text("Continue",style: GoogleFonts.roboto(
+                                          color: Colors.white,
+                                        ),),
+                                      ),
+                                    ),
+                                  )
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 

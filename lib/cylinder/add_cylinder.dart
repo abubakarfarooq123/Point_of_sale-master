@@ -304,15 +304,15 @@ class _Add_CylinderState extends State<Add_Cylinder> {
 
 
   void onSaveButtonPressed() {
-    Map<String, dynamic> newData = {
-      'Item': selectedCylinder!.cy_title,
-      'Weight': selectedCylinder!.amount,
-      'Quantity': quantity1,
-      'Rate': amountPaidValue,
-      'Extra': extraAmountValue,
-      'Per': grandTotal,
-      'total': greatgrandTotal,
-    };
+    // Map<String, dynamic> newData = {
+    //   'Item': selectedCylinder!.cy_title,
+    //   'Weight': selectedCylinder!.amount,
+    //   'Quantity': quantity1,
+    //   'Rate': amountPaidValue,
+    //   'Extra': extraAmountValue,
+    //   'Per': grandTotal,
+    //   'total': greatgrandTotal,
+    // };
 
     DocumentReference docRef = FirebaseFirestore.instance.collection('cylinder').doc();
     var brandId = docRef.id;
@@ -1028,8 +1028,8 @@ class _Add_CylinderState extends State<Add_Cylinder> {
 
                           snapshot.data?.docs.forEach((doc) {
                             String docId = doc.id;
-                            String title = doc['cylinder'];
-                            String quantityString = doc['quantity'].toString();
+                            String title = doc['Item'];
+                            String quantityString = doc['Quantity'].toString();
                             int quantity = int.parse(quantityString);
                             double amount = double.parse(doc['weight'].toString()); // Retrieve the amount value
 

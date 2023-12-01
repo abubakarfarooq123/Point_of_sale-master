@@ -234,7 +234,7 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
     docRef.set({
 
       'id': brandId,
-      'cylinder': selectedProduct!.p_name,
+      'Item': selectedProduct!.p_name,
       'count': selectedItemCount,
       'warehouse': selectedCategory!.c_title,
       'purchase': currentPurchaseCount,
@@ -242,7 +242,7 @@ class _Add_Empty_CylinderState extends State<Add_Empty_Cylinder> {
       'duedate': duedate,
       'supplier': selectedSupplier!.s_name,
       'today_amount': amountPaidController.text,
-      'quantity': quantityController.text,
+      'Quantity': quantityController.text,
       'total': grandTotal,
       'weight': selectedProduct!.amount,
       'piad': amounttotoPaidController.text,

@@ -44,11 +44,13 @@ class _Add_WarehouseState extends State<Add_Warehouse> {
     super.dispose();
   }
 
-  add() async {
-    await FirebaseFirestore.instance
-        .collection('warehouse')
-        .doc()
-        .set({
+  add()  {
+    DocumentReference docRef =
+    FirebaseFirestore.instance.collection('warehouse').doc();
+    var brandId = docRef.id;
+
+    docRef.set({
+      'id': brandId,
       'item': name,
       'phone': phone,
       'addres':address,

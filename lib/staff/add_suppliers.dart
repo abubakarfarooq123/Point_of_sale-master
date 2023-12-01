@@ -75,14 +75,14 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
     print('Previous balance: ${previous_balanceController.text}');
   }
 
-  add() async {
+  add()  {
     DocumentReference docRef = FirebaseFirestore.instance.collection('supplier').doc();
     var brandId = docRef.id;
     previous_blanace = previous_balanceController.text.trim();
     if (previous_blanace.isEmpty) {
       previous_blanace = '0'; // Set default value of '0' if no value is entered
     }
-    await docRef.set({
+     docRef.set({
       'id': brandId,
       'company': company,
       'name': name,
@@ -96,6 +96,8 @@ class _Add_SuppliersState extends State<Add_Suppliers> {
       'previous': previous_blanace,
       'total_paid': "0",
       'purchase': "0",
+       'reverse':[],
+       'receive':[],
       'comment':comment,
       'agency': agency,
     })

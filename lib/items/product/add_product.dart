@@ -13,6 +13,8 @@ import 'package:pos/items/product/product.dart';
 import 'package:pos/user/edit_profile.dart';
 import '../../splashScreens/loginout.dart';
 import 'Brand.dart';
+import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
+
 
 enum MenuItem {
   item1,
@@ -46,6 +48,7 @@ class _Add_productState extends State<Add_product> {
   @override
   void initState() {
     super.initState();
+    scanBarcode();
     fetchBrands().then((brands) {
       setState(() {
         this.brands = brands;
@@ -62,10 +65,10 @@ class _Add_productState extends State<Add_product> {
   var sku = "";
   var amount = "";
   var restoke = "";
-  var retail = "";
-  var wholesale = "";
+  double retail = 0.0;
+  double wholesale = 0.0;
   var descript = "";
-  var parchoon = "";
+  double parchoon = 0.0;
 
   BrandModel? selectedBrand; // Declare the vafriable
   CategoryModel? selectedCategory; // Declare the variable
@@ -94,6 +97,8 @@ class _Add_productState extends State<Add_product> {
     parchoonController.dispose();
     descriptController.dispose();
     additionalTextController.dispose();
+    barcodeController.dispose(); // Dispose the controller when the widget is disposed
+
     super.dispose();
   }
   bool _isUploading = false;
@@ -116,6 +121,7 @@ class _Add_productState extends State<Add_product> {
 
   List<String> selectedUnitTitles = ['', '']; // Initialize with empty values
 
+
   void add() {
     _startUploading();
 
@@ -127,42 +133,48 @@ class _Add_productState extends State<Add_product> {
       if (selectedUnit?.u_title != null) {
         selectedUnitTitles[1] = selectedUnit!.u_title;
       }
-      else {
-      }
 
+      String barcode = barcodeController.text;
+
+      // Modify string fields in documentData
       Map<String, dynamic> documentData = {
         'id': brandId,
         'item': name,
         'brand': selectedBrand!.title,
         'category': selectedCategory!.c_title,
-        'unit': selectedUnitTitles,
-        'sku': sku,
+        'unit': selectedUnitTitles.map((title) => title.replaceAll(RegExp(r'[ ,.]'), '')).toList(),
+        'sku': sku.replaceAll(RegExp(r'[ ,.]'), ''),
         'amount': amountController.text != null && amountController.text.isNotEmpty
-            ? amountController.text
+            ? amountController.text.replaceAll(RegExp(r'[ ,.]'), '')
             : "0.0",
         'restoke': restoke,
         'des': descript,
-        'additional':'0',
+        'additional': '0',
+        'barcode': barcode.replaceAll(RegExp(r'[ ,.]'), ''), // Barcode field
         'quantity': '0',
         'expiry': '',
         'rate': '0',
-        'conversion': additionalTextController.text,
+        'tillquantity':"0.0",
+        'tillgrandpur':"0.0",
+        'tillquantitysale':"0.0",
+        'tillgrandsale':"0.0",
+        'conversion': additionalTextController.text.replaceAll(RegExp(r'[ ,.]'), ''),
         'simple_values': {
-          selectedUnitTitles[1]: {
+          selectedUnitTitles[1].replaceAll(RegExp(r'[ ,.]'), ''): {
             'retail': retail,
             'wholesale': wholesale,
             'parchoonval': parchoon,
           },
         },
-        'image_url': imageUrl, // Store the image URL in Firestore
+        'image_url': imageUrl,
       };
 
       if (selectedUnitMin != null) {
         documentData['divided_values'] = {
-          selectedUnitTitles[0]: {
-            'val': dividedValue !=null ? dividedValue : '0',
-            'wholesaleval': wholesaledividedValue !=null ? wholesaledividedValue :'0',
-            'parchoon': parchoondividedValue !=null ? parchoondividedValue : '0',
+          selectedUnitTitles[0].replaceAll(RegExp(r'[ ,.]'), ''): {
+            'val': dividedValue != null ? dividedValue! : '0',
+            'wholesaleval': wholesaledividedValue != null ? wholesaledividedValue : '0',
+            'parchoon': parchoondividedValue != null ? parchoondividedValue : '0',
           },
         };
       }
@@ -185,6 +197,26 @@ class _Add_productState extends State<Add_product> {
       _finishUploading();
     });
   }
+
+  TextEditingController barcodeController = TextEditingController();
+  String rawBarcodeData = ''; // Variable to hold raw barcode data
+
+  Future<void> scanBarcode() async {
+    String barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
+      "#ff6666",
+      "Cancel",
+      true,
+      ScanMode.BARCODE,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      barcodeController.text = barcodeScanRes;
+      rawBarcodeData = barcodeScanRes; // Store raw barcode data as well
+    });
+  }
+
 
   Future<String> uploadImageToStorage() {
     if (_image == null) return Future.value(''); // No image selected
@@ -613,7 +645,6 @@ class _Add_productState extends State<Add_product> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 20.0,
-                              color: Colors.teal[700],
                             ),
                           ),
                         ],
@@ -693,6 +724,27 @@ class _Add_productState extends State<Add_product> {
                                 ),
                               ),
                             ],
+                          ),
+                          SizedBox(
+                            height: 10.0,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(18.0),
+                            child: TextFormField(
+                                decoration: InputDecoration(
+                                  hintText: '"Scanned Barcode"',
+                                  enabledBorder: OutlineInputBorder(
+                                    borderSide:
+                                    BorderSide(color: Colors.grey, width: 1),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  icon: Icon(
+                                    FontAwesomeIcons.barcode,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                controller: barcodeController,
+                                ),
                           ),
                           SizedBox(
                             height: 10.0,
@@ -1047,6 +1099,12 @@ class _Add_productState extends State<Add_product> {
                                             borderRadius:
                                                 BorderRadius.circular(10)),
                                       ),
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Please Enter Number';
+                                          }
+                                          return null;
+                                        }
                                     ),
                                   ],
                                 ),
@@ -1057,7 +1115,7 @@ class _Add_productState extends State<Add_product> {
                     ],
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(left: 18,right: 18,bottom: 18),
+                    padding: const EdgeInsets.only(left: 18,right: 18,bottom: 18,top: 10),
                     child: Container(
                         alignment: AlignmentDirectional.centerStart,
                         child: Text("Enter If item is Cylinder",style: GoogleFonts.roboto(
@@ -1114,6 +1172,12 @@ class _Add_productState extends State<Add_product> {
                           ),
                         ),
                         controller: skuController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please Enter SKU';
+                          }
+                          return null;
+                        }
                        ),
                   ),
                   Padding(
@@ -1137,6 +1201,12 @@ class _Add_productState extends State<Add_product> {
                           ),
                         ),
                         controller: restokeController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please Enter Number';
+                          }
+                          return null;
+                        }
                        ),
                   ),
                   Padding(
@@ -1375,9 +1445,9 @@ class _Add_productState extends State<Add_product> {
                                     name = nameController.text;
                                     sku = skuController.text;
                                     restoke = restokeController.text;
-                                    retail = retailController.text;
-                                    wholesale = wholesaleController.text;
-                                    parchoon = parchoonController.text;
+                                    retail = double.parse(retailController.text);
+                                    wholesale = double.parse(wholesaleController.text);
+                                    parchoon = double.parse(parchoonController.text);
                                     descript = descriptController.text;
                                   });
                                   add();

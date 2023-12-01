@@ -40,52 +40,296 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
 
 
+  var brandIdpurchase ='';
+  Future<String> getPreviousBalanceForCustomer(String customerId) async {
+    String previousBalance = "";
 
-  void saveDataAndResetFields(BuildContext context) {
-    amounts =
-        _extraamountController
-            .text;
+    DocumentSnapshot customerSnapshot = await FirebaseFirestore.instance
+        .collection('supplier')
+        .doc(customerId)
+        .get();
 
-    Map<String, dynamic> newData = {
-      'Item': selectedProduct!.p_name,
-    'Quantity':
-    _quantityController
-        .text,
-    'Rate': _ratesController
-        .text,
-    'Subtotal':
-    previoussubtotal,
-    'Discount': (selectedProducts.length > 1 &&
-    selectedDiscount == null)
-    ? '0'
-        : "${selectedDiscountText}${selectedDiscount != null && double.parse(selectedDiscount!.d_amount) < 1 ? '%' : ''}",
-    'Tax': (selectedProducts.length > 1 &&
-    selectedTax == null)
-    ? '0'
-        : "${selectedTaxText}${selectedTax != null && double.parse(selectedTax!.t_amount) < 1 ? '%' : ''}",
-    'Amount': (selectedProducts.length > 1 &&
-    (_extraamountController.text == null ||  _extraamountController.text.isEmpty))
-    ? '0'
-        : amounts.toString(),
-    'Grandtotal':
-    (selectedProducts.length > 1 &&
-    _extraamountController.text.isEmpty) ? extraValueForSecondProduct :
-    (selectedProducts.length > 1 &&
-    selectedTax ==
-    null)
-    ? discountForSecondProduct
-        .toString()
-        : (selectedProducts.length > 1 && selectedDiscount == null)
-    ? taxForSecondProduct.toString()
-        : grandTotal.toString(),
-    };
+    if (customerSnapshot.exists) {
+      // If the customer exists, retrieve their previous balance
+      previousBalance = customerSnapshot.get('previous') ?? " ";
+      print("object objectobjectobjectobjectobject $previousBalance");
+    }
+
+    return previousBalance;
+  }
+  void onSaveButtonPressed(String customerId) async{
+
+    String previousBalanceString = await getPreviousBalanceForCustomer(
+        customerId);
+    double previousBalance = 0.0;
+    double incrementedValue;
+    String updatedValue = '';
+
+    double valueToSubtract = lastnew;
+    if (previousBalanceString.isNotEmpty) {
+      previousBalance = double.parse(previousBalanceString);
+    }
+
+    if (previousBalance != "") {
+      incrementedValue = previousBalance + valueToSubtract;
+      updatedValue = incrementedValue.toString();
+      print("incrementedValue before  $incrementedValue");
+    }
+    else {
+      incrementedValue = valueToSubtract;
+      updatedValue = incrementedValue.toString();
+      print("incrementedValue after  $incrementedValue");
+    }
+
+    DocumentReference docRef =
+    FirebaseFirestore.instance.collection('Purchase').doc();
+     brandIdpurchase = docRef.id;
+
+
+    docRef.set({
+      'id': brandIdpurchase,
+      'item': selectedProduct!.p_name,
+      'count': selectedItemCount,
+      'purchase': currentPurchaseCount,
+      'pickdate': pickdate,
+      'duedate': duedate,
+      'warehouse': selectedCategory!.c_title,
+      'supplier': selectedSupplier!.s_name,
+      'subtotal': selectedProducts.length > 1 ? combosubtotal : subtotal,
+      'grand': selectedDiscount != null && selectedTax != null
+          ? grandTotal
+          : selectedDiscount != null
+          ? grandTotal
+          : selectedTax != null
+          ? grandTotal
+          : selectedProducts.length > 1
+          ? combosubtotal
+          : subtotal,
+      'discount':
+      selectedDiscount?.d_amount != null ? selectedDiscount!.d_amount : 0.0,
+      'tax': selectedTax?.t_amount != null ? selectedTax!.t_amount : 0.0,
+      // 'payed': amountPaidController.text,
+      'due':lastnew,
+      'paid': amountPaidController.text,
+      'before': previousBalanceString,
+      'after': updatedValue,
+    });
+
+    saveDataToFirestore(tableData, brandIdpurchase); // Pass the brandId to the saveDataToFirestore() method
 
     setState(() {
-      tableData.add(newData);
+      currentPurchaseCount++;
     });
-    resetTextField();
-    print(newData);
+    FirebaseFirestore.instance.collection('Purchase').doc(brandIdpurchase).update({'purchase': currentPurchaseCount});
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Purchase(),
+      ),
+    );
   }
+
+  void onSaveButtonInventoryPressed() {
+
+    DocumentReference docRef =
+    FirebaseFirestore.instance.collection('Inventory').doc();
+    var brandId = docRef.id;
+
+    docRef.set({
+      'id': brandId,
+      'pickdate': pickdate,
+      'warehouse': selectedCategory!.c_id,
+      'timestamp': FieldValue.serverTimestamp(), // Add the timestamp field
+
+    });
+
+    saveDataToFirestoreInventory(tableData, brandId); // Pass the brandId to the saveDataToFirestore() method
+
+
+    setState(() {
+      currentPurchaseCount++;
+    });
+    FirebaseFirestore.instance.collection('Purchase').doc(brandId).update({'purchase': currentPurchaseCount});
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Purchase(),
+      ),
+    );
+  }
+
+
+
+  Future<void> quantitytill(String itemId, String newQuantity) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('Product')
+          .doc(itemId)
+          .get();
+
+      String currentValue = snapshot.data()!['tillquantity'];
+      print("CurrentValue $currentValue");
+
+      double updatedValue = double.parse(newQuantity) + double.parse(currentValue);
+      double updatedValueString = updatedValue;
+
+      await FirebaseFirestore.instance
+          .collection('Product')
+          .doc(itemId)
+          .update({'tillquantity': updatedValueString.toStringAsFixed(2),
+      });
+      print('Item value updated successfully.');
+    } catch (error) {
+      print('Error updating item value: $error');
+    }
+  }
+  Future<void> tillgrand(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('Product')
+          .doc(itemId)
+          .get();
+
+      String currentValue = snapshot.data()!['tillgrandpur'];
+      print("CurrentValue $currentValue");
+
+      double updatedValue = selectedDiscount != null && selectedTax != null
+          ? grandTotal
+          : selectedDiscount != null
+          ? grandTotal
+          : selectedTax != null
+          ? grandTotal
+          : selectedProducts.length > 1
+          ? combosubtotal
+          : subtotal + double.parse(currentValue);
+
+      double updatedValueString = updatedValue;
+
+      await FirebaseFirestore.instance
+          .collection('Product')
+          .doc(itemId)
+          .update({'tillgrandpur': updatedValueString.toStringAsFixed(2),
+      });
+      print('Item value updated successfully.');
+    } catch (error) {
+      print('Error updating item value: $error');
+    }
+  }
+
+
+  void saveDataToFirestore(List<Map<String, dynamic>> data, String brandId) async {
+    DocumentReference cylinderDocRef = FirebaseFirestore.instance.collection('Purchase').doc(brandId);
+
+    CollectionReference detailsSubcollectionRef = cylinderDocRef.collection('details');
+
+    QuerySnapshot existingTables = await detailsSubcollectionRef.get();
+    existingTables.docs.forEach((doc) => doc.reference.delete());
+
+    List<Future<void>> addOperations = data.map((tableData) {
+      return detailsSubcollectionRef.add(tableData);
+    }).toList();
+
+    await Future.wait(addOperations);
+  }
+
+  void saveDataToFirestoreInventory(List<Map<String, dynamic>> data, String brandId) async {
+    DocumentReference cylinderDocRef = FirebaseFirestore.instance.collection('Inventory').doc(brandId);
+
+    CollectionReference detailsSubcollectionRef = cylinderDocRef.collection('items');
+
+    QuerySnapshot existingTables = await detailsSubcollectionRef.get();
+    existingTables.docs.forEach((doc) => doc.reference.delete());
+
+    List<Future<void>> addOperations = data.map((tableData) {
+      return detailsSubcollectionRef.add(tableData);
+    }).toList();
+
+    await Future.wait(addOperations);
+  }
+
+
+  List<Map<String, dynamic>> selectedItemsData = [];
+
+
+  void saveDataAndResetFields(BuildContext context) {
+      amounts =
+          _extraamountController
+              .text;
+
+      Map<String, dynamic> newData = {
+        'Item': selectedProduct!.p_name,
+      'Quantity':
+      _quantityController
+          .text,
+      'Rate': _ratesController
+          .text,
+      'Subtotal':
+      previoussubtotal,
+      'Discount': (selectedProducts.length > 1 &&
+      selectedDiscount == null)
+      ? '0'
+          : "${selectedDiscountText}${selectedDiscount != null && double.parse(selectedDiscount!.d_amount) < 1 ? '%' : ''}",
+      'Tax': (selectedProducts.length > 1 &&
+      selectedTax == null)
+      ? '0'
+          : "${selectedTaxText}${selectedTax != null && double.parse(selectedTax!.t_amount) < 1 ? '%' : ''}",
+      'Amount': (selectedProducts.length > 1 &&
+      (_extraamountController.text == null ||  _extraamountController.text.isEmpty))
+      ? '0'
+          : amounts.toString(),
+      'Grandtotal': (selectedProducts.length > 1 &&
+          _extraamountController.text.isEmpty) ? extraValueForSecondProduct :
+      (selectedProducts.length > 1 && _extraamountController.text.isNotEmpty) ? grandTotal:
+      (selectedProducts.length > 1 &&
+      selectedTax == null)
+      ? discountForSecondProduct
+          .toString()
+          : (selectedProducts.length > 1 && selectedDiscount == null)
+      ? taxForSecondProduct.toString()
+          : grandTotal.toString(),
+        'date': _purchasedateController.text,
+        'sell':'0.0',
+        'productID': selectedProduct!.p_id,
+        'purchaseID':brandIdpurchase,
+        'timestamp': FieldValue.serverTimestamp(), // Add the timestamp field
+        'quantitytominus':_quantityController.text,
+
+      };
+      Map<String, dynamic> itemData = {
+        'itemId': selectedProduct!.p_id,
+        'quantity': _quantityController.text,
+        'rates': _ratesController.text,
+      };
+
+      selectedItemsData.add(itemData);
+
+      setState(() {
+        tableData.add(newData);
+      });
+      // increaseItemByOne(selectedProduct!.p_id, _quantityController.text);
+      // _updateSelectedValues(selectedProduct!.p_id);
+
+
+      quantitytill(selectedProduct!.p_id, _quantityController.text);
+      tillgrand(selectedProduct!.p_id);
+
+      resetTextField();
+      print(newData);
+    }
+
+  void completePurchase() async {
+    for (Map<String, dynamic> itemData in selectedItemsData) {
+      String itemId = itemData['itemId'];
+      String quantity = itemData['quantity'];
+      String rates = itemData['rates'];
+
+      await _updateSelectedValues(itemId, quantity, rates);
+      await increaseItemByOne(itemId, quantity);
+    }
+  }
+
 
 
   Widget? tableWidget;
@@ -111,48 +355,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
   int currentPurchaseCount = 0;
 
-  add()  {
-    DocumentReference docRef =
-        FirebaseFirestore.instance.collection('Purchase').doc();
-    var brandId = docRef.id;
 
-     docRef.set({
-      'id': brandId,
-      'item': selectedProduct!.p_name,
-      'count': selectedItemCount,
-       'purchase': currentPurchaseCount,
-      'pickdate': pickdate,
-      'duedate': duedate,
-      'warehouse': selectedCategory!.c_title,
-      'supplier': selectedSupplier!.s_name,
-      'subtotal': selectedProducts.length > 1 ? combosubtotal : subtotal,
-      'grand': selectedDiscount != null && selectedTax != null
-          ? grandTotal
-          : selectedDiscount != null
-              ? grandTotal
-              : selectedTax != null
-                  ? grandTotal
-                  : selectedProducts.length > 1
-                      ? combosubtotal
-                      : subtotal,
-      'discount':
-          selectedDiscount?.d_amount != null ? selectedDiscount!.d_amount : 0.0,
-      'tax': selectedTax?.t_amount != null ? selectedTax!.t_amount : 0.0,
-    });
-    setState(() {
-      currentPurchaseCount++;
-    });
-     FirebaseFirestore.instance
-        .collection('Purchase')
-        .doc(brandId)
-        .update({'purchase': currentPurchaseCount});
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Purchase(),
-      ),
-    );
-  }
 
   var amounts = "";
   var label = "";
@@ -327,50 +530,18 @@ class _Add_PurchaseState extends State<Add_Purchase> {
   }
 
   double? discountadd;
+  double lastnew=0.0;
 
   void assignGrandTotal() {
     print("Grand total balance due ${subtotal.toString()}");
 
     setState(() {
-      if (amountPaidController.text.isNotEmpty) {
-        double enteredValue = double.parse(amountPaidController.text);
-        print("Grand total Entered ${enteredValue}");
-        print("Great Grand total Entered ${grandTotal}");
-        print("Tax Grand total Entered ${taxgrand}");
-        print("Global Grand total Entered ${globalGrandTotal}");
-        print("Grand total Entered ${grandTotal}");
-        if (selectedDiscount == null && selectedProducts.length > 1 && selectedTax == null) {
-          grandTotal -= enteredValue;
-          print("tax last grandaaaaaaa aaaa $grandTotal");
-          ramaining = grandTotal;
+        if (amountPaidController.text.isNotEmpty) {
+          double extraAmount = double.tryParse(amountPaidController.text) ?? 0.0;
+          lastnew = grandTotal - extraAmount; // Subtract the final value
+          print("extraAmount$lastnew");
         }
-        else if (selectedDiscount != null && selectedTax != null) {
-          taxgrand -= enteredValue;
-          print("tax last grand $taxgrand");
-          ramaining = taxgrand;
-        } else if (selectedDiscount != null) {
-          globalGrandTotal -= enteredValue;
-          print("tax last global grand $globalGrandTotal");
-          ramaining = globalGrandTotal;
-        } else if (selectedTax != null) {
-          taxgrand -= enteredValue;
-          print("tax last aaaaa grandta  at a $taxgrand");
-          ramaining = taxgrand;
-        }
-        else if (selectedProducts.length > 1 && selectedDiscount ==null  ) {
-          globalGrandTotal -= enteredValue;
-          print("tax last grandaaaaaaa aaaa $grandTotal");
-          ramaining = globalGrandTotal;
-        }
-        else if (selectedProducts.length > 1 && selectedTax == null) {
-          taxgrand -= enteredValue;
-          print("tax last aaa grand $taxgrand");
-          ramaining = taxgrand;
-        }
-        else{
-          print("nothing available");
-        }
-      }
+
     });
   }
 
@@ -562,6 +733,40 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
   double ramaining= 0.0;
 
+
+
+  Future<void> increaseItemByOneInvoice(String itemId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('supplier')
+          .doc(itemId)
+          .get();
+      String currentValue = snapshot.data()!['invoice'];
+
+      print("CurrentValue $currentValue");
+
+      int? parsedValue = int.tryParse(currentValue);
+      if (parsedValue != null) {
+        int incrementedValue = parsedValue + 1;
+        print("incrementedValue $incrementedValue");
+        String updatedValue = incrementedValue.toString();
+        // Now you can use the updatedValue as needed
+        await FirebaseFirestore.instance
+            .collection('supplier')
+            .doc(itemId)
+            .update({'invoice': updatedValue});
+      } else {
+        print("Failed to parse the current value as an integer");
+      }
+
+      print('Item value incremented successfully.');
+    } catch (error) {
+      print('Error incrementing item value: $error');
+    }
+  }
+
+
   Future<void> increaseItemByOneamount(String itemId) async {
     try {
       DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
@@ -575,8 +780,8 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
       double enteredAmount = double.parse(currentValue);
       if (enteredAmount != null) {
-        double incrementedValue =
-            enteredAmount + ramaining;
+        double paid = double.parse(amountPaidController.text);
+        double incrementedValue = enteredAmount + paid;
         print("incrementedValue $incrementedValue");
         String updatedValue = incrementedValue.toString();
 
@@ -606,15 +811,8 @@ class _Add_PurchaseState extends State<Add_Purchase> {
       print("CurrentValue $currentValue");
       double enteredAmount = double.parse(currentValue);
       if (enteredAmount != null) {
-        if (amountPaidController.text != null &&
-            amountPaidController.text.isNotEmpty) {
-          double incrementedValue = enteredAmount +
-              ((selectedDiscount != null && selectedTax != null) ?
-              taxgrand : (selectedProducts.length > 1 && selectedTax == null) ?
-              taxgrand : selectedDiscount != null
-                  ? globalGrandTotal
-                  : selectedTax != null ? taxgrand :
-              grandTotal);
+        if (amountPaidController.text != null && amountPaidController.text.isNotEmpty) {
+          double incrementedValue = enteredAmount + lastnew;
           print("incrementedValue $incrementedValue");
           String updatedValue = incrementedValue.toString();
 
@@ -626,25 +824,25 @@ class _Add_PurchaseState extends State<Add_Purchase> {
           print("incrementedValue $incrementedValue");
 
         }
-        else {
-          double incrementedValue = enteredAmount +
-              ((selectedDiscount != null && selectedTax != null) ?
-              taxgrand : (selectedProducts.length > 1 && selectedTax == null) ?
-              taxgrand : selectedDiscount != null
-                  ? globalGrandTotal
-                  : selectedTax != null ? taxgrand :
-              grandTotal);
-          print("incrementedValue $incrementedValue");
-          String updatedValue = incrementedValue.toString();
-
-          // Now you can use the updatedValue as needed
-          await FirebaseFirestore.instance
-              .collection('supplier')
-              .doc(itemId)
-              .update({'previous': updatedValue});
-          print("incrementedValue $incrementedValue");
-
-        }
+        // else {
+        //   double incrementedValue = enteredAmount +
+        //       ((selectedDiscount != null && selectedTax != null) ?
+        //       taxgrand : (selectedProducts.length > 1 && selectedTax == null) ?
+        //       taxgrand : selectedDiscount != null
+        //           ? globalGrandTotal
+        //           : selectedTax != null ? taxgrand :
+        //       grandTotal);
+        //   print("incrementedValue $incrementedValue");
+        //   String updatedValue = incrementedValue.toString();
+        //
+        //   // Now you can use the updatedValue as needed
+        //   await FirebaseFirestore.instance
+        //       .collection('supplier')
+        //       .doc(itemId)
+        //       .update({'previous': updatedValue});
+        //   print("incrementedValue $incrementedValue");
+        //
+        // }
       }
     }
     catch (error) {
@@ -654,53 +852,82 @@ class _Add_PurchaseState extends State<Add_Purchase> {
 
   bool isTableVisible = true;
 
-  Future<void> increaseItemByOne(String itemId) async {
+  Future<void> increaseItemByOne(String itemId, String newQuantity) async {
     try {
       DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
           .instance
           .collection('Product')
           .doc(itemId)
           .get();
-      String currentValue = snapshot.data()!['quantity'];
 
-      print("CurrentValue $currentValue");
+      String? converserate = snapshot.data()?['conversion'];
+      double itemConvnbjgj;
 
-      double enteredAmount = double.parse(currentValue);
-      if (enteredAmount != null) {
-        double incrementedValue =
-            enteredAmount + int.parse(_quantityController.text);
-        print("incrementedValue $incrementedValue");
-        String updatedValue = incrementedValue.toString();
-
-        // Now you can use the updatedValue as needed
-        await FirebaseFirestore.instance
-            .collection('Product')
-            .doc(itemId)
-            .update({'quantity': updatedValue});
+      if (converserate != "") {
+        converserate = converserate?.replaceAll(',', ''); // Remove commas
+        itemConvnbjgj = double.tryParse(converserate!) ?? 1.0;
       } else {
-        print("Failed to parse the current value as an integer");
+        itemConvnbjgj = 1.0; // Default to 1 if 'conversion' doesn't exist
       }
 
-      print('Item value incremented successfully.');
+      double rateeee = double.parse(_ratesController.text);
+      double minirate = rateeee/itemConvnbjgj;
+
+
+
+      String currentValue = snapshot.data()!['quantity'];
+      print("CurrentValue $currentValue");
+
+
+
+      double enteredAmount = double.parse(currentValue);
+      double updatedValue = enteredAmount + double.parse(newQuantity);
+      String updatedValueString = updatedValue.toString();
+
+      await FirebaseFirestore.instance
+          .collection('Product')
+          .doc(itemId)
+          .update({'quantity': updatedValueString,
+        'minirate': minirate.toStringAsFixed(2)});
+
+      print('Item value updated successfully.');
     } catch (error) {
-      print('Error incrementing item value: $error');
+      print('Error updating item value: $error');
     }
   }
 
-  void _updateSelectedValues(String Itemid) {
-    String expiry = _expiryController.text;
-    String rates = _ratesController.text;
+  // void _updateSelectedValues(String Itemid) {
+  //
+  //   // Update selected height and weight in Firebase
+  //   FirebaseFirestore.instance.collection('Product').doc(Itemid).update({
+  //     'rate': rates,
+  //     'expiry': expiry,
+  //   }).then((_) {
+  //     print('Selected values updated successfully');
+  //   }).catchError((error) {
+  //     print('Error updating selected values: $error');
+  //   });
+  // }
+  Future<void> _updateSelectedValues(String itemId, String quantity, String rates) async {
+    try {
+      // ... (your existing code)
+      String expiry = _expiryController.text;
+      String rates = _ratesController.text;
 
-    // Update selected height and weight in Firebase
-    FirebaseFirestore.instance.collection('Product').doc(Itemid).update({
-      'rate': rates,
-      'expiry': expiry,
-    }).then((_) {
-      print('Selected values updated successfully');
-    }).catchError((error) {
+
+      FirebaseFirestore.instance.collection('Product').doc(itemId).update({
+        'rate': rates,
+        'expiry': expiry,
+      }).then((_) {
+        print('Selected values updated successfully');
+      }).catchError((error) {
+        print('Error updating selected values: $error');
+      });
+    } catch (error) {
       print('Error updating selected values: $error');
-    });
+    }
   }
+
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -1365,14 +1592,8 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                     setState(() {
                                       Map<String, dynamic> data =
                                           values as Map<String, dynamic>;
-                                      _quantityController.text =
-                                          data['quantity']?.toString() ?? '';
-                                      _expiryController.text =
-                                          data['expiry'] ?? '';
-                                      _ratesController.text =
-                                          data['rate']?.toString() ?? '';
                                       selectedProductUnit = data['unit'];
-                                      // Update other controller values as needed
+
                                     });
                                   });
 
@@ -2639,7 +2860,7 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           child: Padding(
                         padding: const EdgeInsets.only(left: 50, top: 10),
                         child: Text(
-                          'Rs. ${ramaining.toStringAsFixed(2)}',
+                          'Rs. ${lastnew.toStringAsFixed(2)}',
                           style: GoogleFonts.roboto(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
@@ -2677,7 +2898,10 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                           child: Padding(
                         padding: const EdgeInsets.only(left: 50, top: 10),
                         child: Text(
-                          "Rs. ${(selectedDiscount != null && selectedTax != null) ? taxgrand.toString() : (selectedProducts.length > 1 && selectedTax == null) ? taxgrand.toString() : selectedDiscount != null ? globalGrandTotal.toString() : selectedTax != null ? taxgrand.toString() : grandTotal.toString()}",
+                          'Rs. ${
+                              (extragrand != null && extragrand > 0)
+                                  ? extragrand.toString() :
+                              (selectedDiscount != null && selectedTax != null) ? taxgrand.toString() : (selectedProducts.length > 1 && selectedTax == null) ? taxgrand.toString() : selectedDiscount != null ? globalGrandTotal.toString() : selectedTax != null ? taxgrand.toString() : grandTotal.toString()}',
                           style: GoogleFonts.roboto(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
@@ -2734,32 +2958,6 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                         )),
                       ],
                     ),
-                  // Padding(
-                  //   padding: const EdgeInsets.only(left: 25, top: 20),
-                  //   child: Container(
-                  //     height: 45.0,
-                  //     width: 320.0,
-                  //     decoration: BoxDecoration(
-                  //         borderRadius: BorderRadius.circular(20),
-                  //         color: Colors.grey.shade400),
-                  //     child: InkWell(
-                  //       onTap: () {
-                  //         showDialog(
-                  //             context: context,
-                  //             builder: (context) => showExtraDialog());
-                  //       },
-                  //       child: Center(
-                  //         child: Text(
-                  //           'Add Extra Charges',
-                  //           style: TextStyle(
-                  //             fontSize: 16.0,
-                  //             color: Colors.black,
-                  //           ),
-                  //         ),
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -2836,13 +3034,15 @@ class _Add_PurchaseState extends State<Add_Purchase> {
                                       pickdate = _purchasedateController.text;
                                       duedate = _due_dateController.text;
                                     });
-                                    add();
-                                    _updateSelectedValues(selectedProduct!.p_id);
-                                    increaseItemByOne(selectedProduct!.p_id);
+                                    onSaveButtonPressed(selectedSupplier!.s_id);
+                                    onSaveButtonInventoryPressed();
+
                                     increaseItemByOnebalance(selectedSupplier!.s_id);
                                     increaseItemByOneamount(selectedSupplier!.s_id);
                                     increaseItemByOnesupplier(selectedSupplier!.s_id);
                                     increaseItemByOnewarehouse(selectedCategory!.c_id);
+                                    increaseItemByOneInvoice(selectedSupplier!.s_id);
+                                    completePurchase();
                                     print(" it is $currentPurchaseCount");
                                   }
                                 }

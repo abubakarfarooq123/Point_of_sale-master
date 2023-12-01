@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pos/home/drawer.dart';
@@ -34,16 +35,18 @@ class _Add_CustomerState extends State<Add_Customer> {
   var zipcode = "";
   var country = "";
   var previous_blanace = "";
+  var CNIC = "";
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
   final addressController = TextEditingController();
   final cityController = TextEditingController();
+  final CNICController = TextEditingController();
   final stateController = TextEditingController();
   final zipcodeController = TextEditingController();
   final countryController = TextEditingController();
-  final previous_balanceController = TextEditingController();
+  final previous_balanceController = TextEditingController(text:  "0.0");
 
   @override
   void dispose() {
@@ -52,6 +55,7 @@ class _Add_CustomerState extends State<Add_Customer> {
     phoneController.dispose();
     addressController.dispose();
     cityController.dispose();
+    CNICController.dispose();
     stateController.dispose();
     zipcodeController.dispose();
     countryController.dispose();
@@ -64,25 +68,28 @@ class _Add_CustomerState extends State<Add_Customer> {
     print('Values are ' + name + email + phone);
   }
 
-  add() async {
+  add()  {
     DocumentReference docRef =
     FirebaseFirestore.instance.collection('customer').doc();
     var brandId = docRef.id;
 
-    await docRef.set({
+     docRef.set({
     'id': brandId,
           'name': name,
           'email': email,
           'phone': phone,
+           'cnic':CNIC,
           'gender': setvalue,
+          'reverse':[],
+          'receive':[],
           'address': address,
           'city': city,
           'state': state,
           'zip': zipcode,
           'country': country,
           'previous': previous_blanace,
-      'total_spend': "",
-      'invoices': "",
+          'total_spend': "0.0",
+          'invoices': "0",
         })
         .then((value) => print('User Added'))
         .catchError((error) => print('Failed to add user: $error'));
@@ -220,6 +227,41 @@ class _Add_CustomerState extends State<Add_Customer> {
                           return null;
                         }),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: 'CNIC',
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey, width: 1),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        errorStyle: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 15.0,
+                        ),
+                        icon: Icon(
+                          FontAwesomeIcons.idCard,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      controller: CNICController,
+                      inputFormatters: [
+                        CNICFormatter(), // Custom formatter to add hyphens
+                      ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please Enter CNIC';
+                        } else if (value.length != 15) {
+                          return 'CNIC must be 15 digits';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+
+
 
                   Padding(
                     padding:
@@ -478,6 +520,7 @@ class _Add_CustomerState extends State<Add_Customer> {
                             state = stateController.text;
                             zipcode = zipcodeController.text;
                             country = countryController.text;
+                            CNIC = CNICController.text;
                             previous_blanace = previous_balanceController.text;
                           });
                           add();
@@ -504,6 +547,28 @@ class _Add_CustomerState extends State<Add_Customer> {
           ],
         ),
       ),
+    );
+  }
+}
+class CNICFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text.replaceAll("-", ""); // Remove existing hyphens
+    final formattedText = <String>[];
+
+    for (int i = 0; i < text.length; i++) {
+      if (i == 5 || i == 12) {
+        formattedText.add('-');
+      }
+      formattedText.add(text[i]);
+    }
+
+    final newText = formattedText.join();
+
+    return TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
     );
   }
 }
